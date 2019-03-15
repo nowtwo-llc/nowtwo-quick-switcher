@@ -26,6 +26,9 @@
     "watch:css": "npm-watch build:css",
     "test": "faucet test/"
   },
+  "files": [
+    "dist/"
+  ],
   "devDependencies": {
     "almond": "^0.3.3",
     "concurrently": "^3.4.0",
