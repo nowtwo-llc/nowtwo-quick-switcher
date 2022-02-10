@@ -43,7 +43,7 @@
         "almond": "^0.3.3",
         "concurrently": "^3.4.0",
         "faucet": "0.0.1",
-        "node-sass": "^4.5.2",
+        "node-sass": "^7.0.0",
         "requirejs": "^2.3.2",
         "tape": "^4.6.3",
         "text": "github:requirejs/text#2.0.15",
