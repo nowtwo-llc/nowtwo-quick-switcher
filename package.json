@@ -17,7 +17,7 @@
         "watch:css": "npm-watch build:css",
         "test": "faucet test/"
     },
-    "version": "1.0.0",
+    "version": "1.1.0",
     "watch": {
         "build:js": {
             "patterns": [
