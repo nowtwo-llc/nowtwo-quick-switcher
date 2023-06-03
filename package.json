@@ -1,10 +1,7 @@
 {
-    "author": "Matt Light",
-    "engines": {
-        "npm": "Use Yarn instead",
-        "yarn": "^1.22.0"
-    },
+    "author": "nowtwo-llc",
     "name": "@nowtwo-llc/quick-switcher",
+    "description": "nowtwo-llc quick switcher repo for the main application. Heavily adapted from Matt Light's quick switcher project.",
     "repository": "git@github.com:nowtwo-llc/quick-switcher.git",
     "license": "UNLICENSED",
     "publishConfig": {
@@ -14,12 +11,13 @@
         "build": "npm run build:js && npm run build:css",
         "build:js": "r.js -o build.js",
         "build:css": "node-sass --output-style compressed --include-path src src/quick-switcher.scss dist/quick-switcher.min.css",
+        "update": "npm-check-updates -u",
         "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
         "watch:js": "npm-watch build:js",
         "watch:css": "npm-watch build:css",
         "test": "faucet test/"
     },
-    "version": "0.3.0",
+    "version": "1.0.0",
     "watch": {
         "build:js": {
             "patterns": [
@@ -32,8 +30,8 @@
             "patterns": [
                 "src"
             ],
-        "extensions": "scss",
-        "quiet": false
+            "extensions": "scss",
+            "quiet": false
         }
     },
     "files": [
@@ -41,12 +39,13 @@
     ],
     "devDependencies": {
         "almond": "^0.3.3",
-        "concurrently": "^3.4.0",
-        "faucet": "0.0.1",
-        "node-sass": "^4.5.2",
-        "requirejs": "^2.3.2",
-        "tape": "^4.6.3",
-        "text": "github:requirejs/text#2.0.15",
-        "npm-watch": "^0.1.9"
+        "concurrently": "^8.1.0",
+        "faucet": "^0.0.4",
+        "node-sass": "^9.0.0",
+        "npm-check-updates": "^16.10.12",
+        "npm-watch": "^0.11.0",
+        "requirejs": "^2.3.6",
+        "tape": "^5.6.3",
+        "text": "github:requirejs/text"
     }
 }
