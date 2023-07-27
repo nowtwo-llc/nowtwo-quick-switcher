@@ -39,13 +39,13 @@
     ],
     "devDependencies": {
         "almond": "^0.3.3",
-        "concurrently": "^8.1.0",
+        "concurrently": "^8.2.0",
         "faucet": "^0.0.4",
         "node-sass": "^9.0.0",
-        "npm-check-updates": "^16.10.12",
+        "npm-check-updates": "^16.10.17",
         "npm-watch": "^0.11.0",
         "requirejs": "^2.3.6",
-        "tape": "^5.6.3",
+        "tape": "^5.6.6",
         "text": "github:requirejs/text"
     }
 }
