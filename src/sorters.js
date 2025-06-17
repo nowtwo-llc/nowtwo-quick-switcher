@@ -1,7 +1,7 @@
-define('sorters', ['factories'], function(factories) {
-  return {
-    tracker: function getTracker(trackerName) {
-      return factories.tracker(trackerName);
-    },
-  };
+define('sorters', ['factories'], (factories) => {
+    return {
+        tracker(trackerName) {
+            return factories.tracker(trackerName);
+        },
+    };
 });

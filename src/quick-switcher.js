@@ -1,461 +1,587 @@
-var quickSwitcher = function(filters, SelectedResult, sorters, html) {
-  var $ = jQuery;
-
-  var ResultHandler = {
-    filters: filters,
-    sorters: sorters,
-  };
-
-  var callbackOrValue = function(value) {
-    return (typeof value === 'function') ? value() : value;
-  };
-
-  var QuickSwitcher = {
-    init: function($parentDom, options) {
-      this.isOpen = false;
-      this.$parentDom = null;
-      this.$liCollection = null;
-      this.valueObjects = null;
-      this.selectedIndex = null;
-      this.$results = null;
-      this.$noSearchTerms = null;
-      this.$noResults = null;
-      this.$loading = null;
-      this.$breadcrumb = null;
-      this.$search = null;
-      this.searchText = '';
-      this.searchDelayTimeout = null;
-      this.searchId = 0;
-
-      this.modifierKey = 'ctrlKey';
-      if (navigator.platform.toLowerCase().indexOf('mac') != -1) {
-        this.modifierKey = 'metaKey';
-      }
-
-      options = $.extend({
-        searchCallback: function() {},
-        selectCallback: function() {},
-        selectChildSearchCallback: function() {},
-        searchDelay: 1000,
-        hotKey: 'K',
-      }, options);
-
-      if (options.hotKey) {
-        this.hotKey = options.hotKey.toUpperCase();
-      }
-
-      this.setOptions({
-        searchCallback: options.searchCallback,
-        selectCallback: options.selectCallback,
-        selectChildSearchCallback: options.selectChildSearchCallback,
-        searchDelay: options.searchDelay,
-        trackChildrenAs: options.trackChildrenAs,
-      });
-
-      this.initDomElement($parentDom);
-
-      this.callbackStack = [];
-      this.abortSearchCallback = null;
-    },
-
-    initDomElement: function($parentDom) {
-      var qSwitcher = this;
-
-      this.$parentDom = $parentDom;
-      this.$domElement = $(html);
-
-      $parentDom.append(this.$domElement);
-
-      this.$breadcrumb = this.$domElement.find('.lstr-qswitcher-breadcrumb');
-      this.$close = this.$domElement.find('.lstr-qswitcher-close');
-      this.$search = this.$domElement.find('.lstr-qswitcher-search');
-      this.$loading = this.$domElement.find('.lstr-qswitcher-loading');
-      this.$results = this.$domElement.find('.lstr-qswitcher-results');
-      this.$noSearchTerms = this.$domElement.find('.lstr-qswitcher-no-terms');
-      this.$noResults = this.$domElement.find('.lstr-qswitcher-no-results');
-      this.$oopsResults = this.$domElement.find('.lstr-qswitcher-oops-results');
-
-      var $domElement = this.$domElement;
-
-      $domElement.find('.lstr-qswitcher-popup').on('submit', function(event) {
-        event.preventDefault();
-      });
-      $parentDom.find('.lstr-qswitcher-overlay').on('click', function(event) {
-        qSwitcher.closeSwitcher();
-        event.preventDefault();
-      });
-      $parentDom.on('keydown', function(event) {
-        var keyPressed = String.fromCharCode(event.which);
-        if (event[qSwitcher.modifierKey] && keyPressed === qSwitcher.hotKey) {
-          qSwitcher.toggleSwitcher();
-          event.preventDefault();
-        }
-      });
-      $('html').on('keydown', '.lstr-qswitcher-noscroll', function(event) {
-        if (!qSwitcher.isOpen) {
-          return;
-        }
-
-        if (event.which === 38) { // up arrow key
-          qSwitcher.adjustSelectedIndex(-1);
-          event.preventDefault();
-        } else if (event.which === 40) { // down arrow key
-          qSwitcher.adjustSelectedIndex(1);
-          event.preventDefault();
-        } else if (event.which === 27) { // escape key
-          qSwitcher.closeSwitcher();
-          event.preventDefault();
-        } else if (13 === event.keyCode) {
-          qSwitcher.triggerSelect(qSwitcher.selectedIndex, event);
-          event.preventDefault();
-        }
-      });
-      this.$close.on('click', function(event) {
-        qSwitcher.closeSwitcher();
-      });
-      this.$search.on('keyup', function(event) {
-        var searchText = qSwitcher.$search.val();
-
-        if (qSwitcher.searchDelayTimeout) {
-          clearTimeout(qSwitcher.searchDelayTimeout);
-          qSwitcher.searchDelayTimeout = null;
-        }
-
-        if (searchText !== qSwitcher.searchText) {
-          qSwitcher.searchDelayTimeout = setTimeout(function() {
-            qSwitcher.selectIndex(null);
-            qSwitcher.searchText = searchText;
-            qSwitcher.renderList();
-          }, qSwitcher.searchDelay);
-        } else if (event.which === 8 && '' === searchText) {
-          // backspace with text box blank
-          qSwitcher.popCallback();
-          qSwitcher.renderList();
-        }
-      });
-      $domElement.on('mouseover', '.lstr-qswitcher-results li', function() {
-        var $li = $(this);
-        qSwitcher.selectIndex($li.data('lstr-qswitcher').index);
-      });
-      $domElement.on('touchstart', '.lstr-qswitcher-results li', function() {
-        var $li = $(this);
-        qSwitcher.selectIndex($li.data('lstr-qswitcher').index);
-        qSwitcher.$search.blur();
-      });
-      $domElement.on('click', '.lstr-qswitcher-results li', function(event) {
-        var $li = $(this);
-        qSwitcher.triggerSelect($li.data('lstr-qswitcher').index, event);
-      });
-    },
-
-    renderList: function() {
-      if (this.abortSearchCallback) {
-        this.abortSearchCallback();
-        this.abortSearchCallback = null;
-      }
-
-      this.renderBreadcrumb();
-
-      this.usePane(this.$loading);
-
-      var resultHandler = Object.create(ResultHandler);
-      ++this.searchId;
-      resultHandler.setResults = this.setResults.bind(this, this.searchId);
-      resultHandler.setError = this.setError.bind(this, this.searchId);
-      this.abortSearchCallback = this.searchCallback(
-        this.searchText,
-        resultHandler
-      );
-    },
-
-    setResults: function(searchId, items) {
-      // if the search ID provided to setResults is not the current searchId,
-      // ignore the results
-      if (searchId !== this.searchId) {
-        return;
-      }
-
-      var qSwitcher = this;
-
-      qSwitcher.valueObjects = [];
-
-      if (items.length == 0) {
-        this.$results.html('');
-        this.usePane(this.searchText ? this.$noResults : this.$noSearchTerms);
-        return;
-      }
-
-      var $ul = $('<ul>');
-
-      if (this.options.trackChildrenAs) {
-        var tracker = sorters.tracker(this.options.trackChildrenAs);
-        items = tracker.sort(items, this.searchText);
-      }
-
-      items.forEach(function(value, index) {
-        var $li = $('<li>');
-        var $container = $('<div>');
-        $ul.append($li);
-        $li.append($container);
-        qSwitcher.setListText($container, value);
-
-        if (value.description) {
-          var $description = $(
-            '<span class="lstr-qswitcher-result-description"></span>'
-          );
-          qSwitcher.setListText($description, value.description);
-          $li.prepend($description);
-        }
-
-        $li.data('lstr-qswitcher', {'index': index});
-        $container.addClass('lstr-qswitcher-result-container');
-
-        if (value.searchCallback) {
-          $li.addClass('lstr-qswitcher-result-category');
-        }
-
-        qSwitcher.valueObjects[index] = {
-          'index': index,
-          'value': value,
-          '$li': $li,
-        };
-      });
-
-      this.$results.html($ul);
-      this.usePane(this.$results);
-
-      qSwitcher.selectIndex(0);
-      qSwitcher.scrollToSelectedItem();
-      if (window.requestAnimationFrame) {
-        window.requestAnimationFrame(function() {
-          qSwitcher.scrollToSelectedItem();
-        });
-      }
-    },
-
-    setError: function(searchId) {
-      if (searchId !== this.searchId) {
-        return;
-      }
-
-      this.usePane(this.$oopsResults);
-    },
-
-    renderBreadcrumb: function() {
-      if (this.callbackStack.length == 0) {
-        this.$domElement.removeClass('lstr-qswitcher-subsearch');
-        this.$breadcrumb.html('');
-        return;
-      }
-
-      var $ul = $('<ul>');
-
-      this.callbackStack.forEach(function(value, index) {
-        var $li = $('<li>');
-        $li.text(value.text);
-        $ul.append($li);
-      });
-
-      this.$domElement.addClass('lstr-qswitcher-subsearch');
-      this.$breadcrumb.html($ul);
-    },
-
-    setListText: function($element, value) {
-      if (value.html) {
-        $element.html(callbackOrValue(value.html));
-        return;
-      }
-
-      if (value.text) {
-        $element.html(callbackOrValue(value.text));
-        return;
-      }
-
-      $element.text(value);
-    },
-
-    selectIndex: function(selectedIndex) {
-      if (this.selectedIndex !== null
-        && this.valueObjects[this.selectedIndex]
-      ) {
-        this.valueObjects[this.selectedIndex]
-          .$li.removeClass('lstr-qswitcher-result-selected');
-      }
-
-      if (null === selectedIndex || 0 === this.valueObjects.length) {
-        this.selectedIndex = null;
-        return;
-      }
-
-      this.selectedIndex = selectedIndex % this.valueObjects.length;
-
-      if (this.selectedIndex < 0) {
-        this.selectedIndex = this.valueObjects.length - 1;
-      }
-
-      this.valueObjects[this.selectedIndex]
-        .$li.addClass('lstr-qswitcher-result-selected');
-    },
-
-    scrollToSelectedItem: function() {
-      var $results = this.$results;
-
-      if (!this.selectedIndex) {
-        $results.scrollTop(0);
-        return;
-      }
-
-      var $li = this.valueObjects[this.selectedIndex].$li;
-
-      var topOfLi = $li.offset().top - $li.parent().offset().top;
-      var bottomOfLi = topOfLi + $li.outerHeight(true);
-      var scrollTop = $results.scrollTop();
-      var scrollBottom = scrollTop + $results.outerHeight(true);
-
-      if (bottomOfLi > scrollBottom || topOfLi < scrollTop) {
-        $results.scrollTop(topOfLi);
-      }
-    },
-
-    adjustSelectedIndex: function(adjustment) {
-      this.selectIndex(this.selectedIndex + adjustment);
-      this.scrollToSelectedItem();
-    },
-
-    toggleSwitcher: function() {
-      if (this.isOpen) {
-        this.closeSwitcher();
-        return;
-      }
-
-      return this.openSwitcher();
-    },
-
-    openSwitcher: function() {
-      this.useRootCallback();
-      this.$search.val('');
-      this.searchText = '';
-      this.renderList();
-
-      this.$parentDom.toggleClass('lstr-qswitcher-noscroll');
-      this.$domElement.show();
-      this.isOpen = true;
-      this.$search.focus();
-    },
-
-    closeSwitcher: function() {
-      this.$parentDom.removeClass('lstr-qswitcher-noscroll');
-      this.$domElement.hide();
-      this.isOpen = false;
-    },
-
-    triggerSelect: function(index, event) {
-      if (null === index) {
-        return;
-      }
-
-      var selectedValue = this.valueObjects[index].value;
-      var selectedResult = Object.create(SelectedResult);
-      selectedResult.init(selectedValue, this.searchText, this.options, event);
-
-      if (selectedValue.searchCallback) {
-        var isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
-        selectedResult.track();
-        if (false === isSelectionAllowed) {
-          return;
-        }
-
-        this.callbackStack.push({
-          'text': selectedValue.breadcrumbText,
-          'parent': this.options,
-        });
-
-        this.options = selectedValue;
-        this.searchCallback = selectedValue.searchCallback;
-        if (selectedValue.searchDelay) {
-          this.searchDelay = selectedValue.searchDelay;
-        }
-        if (selectedValue.selectCallback) {
-          this.selectCallback = selectedValue.selectCallback;
-        }
-        if (selectedValue.selectChildSearchCallback) {
-          this.selectChildSearchCallback
-            = selectedValue.selectChildSearchCallback;
-        }
-
-        if (!selectedResult.isSearchTextClearingPrevented()) {
-          this.$search.val('');
-          this.searchText = '';
-        }
-
-        this.valueObjects = [];
-        this.selectIndex(null);
-        this.$search.focus();
-        this.renderList();
-
-        return;
-      }
-
-      var isCloseAllowed = this.selectCallback(selectedResult);
-      selectedResult.track();
-      if (false !== isCloseAllowed) {
-        this.closeSwitcher();
-      }
-    },
-
-    popCallback: function() {
-      var callbacks = this.callbackStack.pop();
-      if (!callbacks) {
-        return false;
-      }
-
-      this.setOptions(callbacks.parent);
-
-      return true;
-    },
-
-    useRootCallback: function() {
-      while (this.callbackStack.length > 0) {
-        this.popCallback();
-      }
-    },
-
-    usePane: function($paneToUse) {
-      this.$results.hide();
-      this.$noSearchTerms.hide();
-      this.$noResults.hide();
-      this.$oopsResults.hide();
-      this.$loading.hide();
-
-      $paneToUse.show();
-    },
-
-    setOptions: function(options) {
-      this.options = options;
-
-      this.searchCallback = options.searchCallback;
-      this.searchDelay = options.searchDelay;
-      this.selectCallback = options.selectCallback;
-      this.selectChildSearchCallback = options.selectChildSearchCallback;
-    },
-  };
-
-  var lstrQuickSwitcher = function(options) {
-    var $parentDom = $('body');
-
-    var quickSwitcher = Object.create(QuickSwitcher);
-    quickSwitcher.init($parentDom, options);
-
-    return {
-      open: quickSwitcher.openSwitcher.bind(quickSwitcher),
+/**
+ * Quick Switcher Module
+ * A keyboard-driven interface for quickly switching between different views or actions
+ * in the application. Similar to VS Code's command palette or Sublime Text's Goto Anything.
+ */
+
+const quickSwitcher = (filters, SelectedResult, sorters, html) => {
+    /**
+     * Result Handler
+     * Manages the filtering and sorting of search results
+     */
+    const ResultHandler = {
+        filters: filters,
+        sorters: sorters,
     };
-  };
 
-  return lstrQuickSwitcher;
+    /**
+     * Helper function to handle both function and value callbacks
+     * @param {*} value - Either a function or a direct value
+     * @returns {*} The result of the function call or the value itself
+     */
+    const callbackOrValue = (value) => (typeof value === 'function') ? value() : value;
+
+    /**
+     * Main QuickSwitcher object that handles all the functionality
+     */
+    const QuickSwitcher = {
+        /**
+         * Initialize the QuickSwitcher
+         * @param {HTMLElement} parentDom - The parent DOM element to attach to
+         * @param {Object} options - Configuration options
+         */
+        init(parentDom, options) {
+            // Initialize state variables
+            this.isOpen = false;
+            this.parentDom = null;
+            this.liCollection = null;
+            this.valueObjects = null;
+            this.selectedIndex = null;
+            this.results = null;
+            this.noSearchTerms = null;
+            this.noResults = null;
+            this.loading = null;
+            this.breadcrumb = null;
+            this.search = null;
+            this.searchText = '';
+            this.searchDelayTimeout = null;
+            this.searchId = 0;
+
+            // Set modifier key based on platform (Ctrl for Windows/Linux, Cmd for Mac)
+            this.modifierKey = 'ctrlKey';
+            if (navigator.platform.toLowerCase().indexOf('mac') != -1) {
+                this.modifierKey = 'metaKey';
+            }
+
+            // Set default options and merge with provided options
+            options = Object.assign({
+                searchCallback: () => {},
+                selectCallback: () => {},
+                selectChildSearchCallback: () => {},
+                searchDelay: 1000,
+                hotKey: 'K',
+            }, options);
+
+            // Set hotkey if provided
+            if (options.hotKey) {
+                this.hotKey = options.hotKey.toUpperCase();
+            }
+
+            // Initialize options
+            this.setOptions({
+                searchCallback: options.searchCallback,
+                selectCallback: options.selectCallback,
+                selectChildSearchCallback: options.selectChildSearchCallback,
+                searchDelay: options.searchDelay,
+                trackChildrenAs: options.trackChildrenAs,
+            });
+
+            // Initialize DOM elements
+            this.initDomElement(parentDom);
+
+            // Initialize callback stack and abort search callback
+            this.callbackStack = [];
+            this.abortSearchCallback = null;
+        },
+
+        /**
+         * Initialize DOM elements and set up event listeners
+         * @param {HTMLElement} parentDom - The parent DOM element
+         */
+        initDomElement(parentDom) {
+            const qSwitcher = this;
+
+            // Store parent DOM and create main element
+            this.parentDom = parentDom;
+            this.domElement = html;
+            parentDom.appendChild(this.domElement);
+
+            // Cache DOM elements
+            this.breadcrumb = this.domElement.querySelector('.lstr-qswitcher-breadcrumb');
+            this.close = this.domElement.querySelector('.lstr-qswitcher-close');
+            this.search = this.domElement.querySelector('.lstr-qswitcher-search');
+            this.loading = this.domElement.querySelector('.lstr-qswitcher-loading');
+            this.results = this.domElement.querySelector('.lstr-qswitcher-results');
+            this.noSearchTerms = this.domElement.querySelector('.lstr-qswitcher-no-terms');
+            this.noResults = this.domElement.querySelector('.lstr-qswitcher-no-results');
+            this.oopsResults = this.domElement.querySelector('.lstr-qswitcher-oops-results');
+
+            const domElement = this.domElement;
+
+            // Prevent form submission
+            domElement.querySelector('.lstr-qswitcher-popup').addEventListener('submit', (event) => {
+                event.preventDefault();
+            });
+
+            // Close on overlay click
+            parentDom.querySelector('.lstr-qswitcher-overlay').addEventListener('click', (event) => {
+                qSwitcher.closeSwitcher();
+                event.preventDefault();
+            });
+
+            // Handle keyboard shortcuts
+            parentDom.addEventListener('keydown', (event) => {
+                const keyPressed = String.fromCharCode(event.which);
+                if (event[qSwitcher.modifierKey] && keyPressed === qSwitcher.hotKey) {
+                    qSwitcher.toggleSwitcher();
+                    event.preventDefault();
+                }
+            });
+
+            // Handle navigation keys when switcher is open
+            document.documentElement.addEventListener('keydown', (event) => {
+                if (!qSwitcher.isOpen) {
+                    return;
+                }
+
+                if (event.which === 38) { // up arrow key
+                    qSwitcher.adjustSelectedIndex(-1);
+                    event.preventDefault();
+                } else if (event.which === 40) { // down arrow key
+                    qSwitcher.adjustSelectedIndex(1);
+                    event.preventDefault();
+                } else if (event.which === 27) { // escape key
+                    qSwitcher.closeSwitcher();
+                    event.preventDefault();
+                } else if (13 === event.keyCode) { // enter key
+                    qSwitcher.triggerSelect(qSwitcher.selectedIndex, event);
+                    event.preventDefault();
+                }
+            });
+
+            // Close button handler
+            this.close.addEventListener('click', (event) => {
+                qSwitcher.closeSwitcher();
+            });
+
+            // Search input handler
+            this.search.addEventListener('keyup', (event) => {
+                const searchText = qSwitcher.search.value;
+
+                if (qSwitcher.searchDelayTimeout) {
+                    clearTimeout(qSwitcher.searchDelayTimeout);
+                    qSwitcher.searchDelayTimeout = null;
+                }
+
+                if (searchText !== qSwitcher.searchText) {
+                    qSwitcher.searchDelayTimeout = setTimeout(() => {
+                        qSwitcher.selectIndex(null);
+                        qSwitcher.searchText = searchText;
+                        qSwitcher.renderList();
+                    }, qSwitcher.searchDelay);
+                } else if (event.which === 8 && '' === searchText) {
+                    // Handle backspace with empty search
+                    qSwitcher.popCallback();
+                    qSwitcher.renderList();
+                }
+            });
+
+            // Mouse over handler for results
+            domElement.addEventListener('mouseover', (event) => {
+                const li = event.target.closest('.lstr-qswitcher-results li');
+                if (li) {
+                    qSwitcher.selectIndex(li.dataset.lstrQswitcher.index);
+                }
+            });
+
+            // Touch handler for results
+            domElement.addEventListener('touchstart', (event) => {
+                const li = event.target.closest('.lstr-qswitcher-results li');
+                if (li) {
+                    qSwitcher.selectIndex(li.dataset.lstrQswitcher.index);
+                    qSwitcher.search.blur();
+                }
+            });
+
+            // Click handler for results
+            domElement.addEventListener('click', (event) => {
+                const li = event.target.closest('.lstr-qswitcher-results li');
+                if (li) {
+                    qSwitcher.triggerSelect(li.dataset.lstrQswitcher.index, event);
+                }
+            });
+        },
+
+        /**
+         * Render the search results list
+         */
+        renderList() {
+            // Abort any existing search
+            if (this.abortSearchCallback) {
+                this.abortSearchCallback();
+                this.abortSearchCallback = null;
+            }
+
+            this.renderBreadcrumb();
+            this.usePane(this.loading);
+
+            // Create result handler and initiate search
+            var resultHandler = Object.create(ResultHandler);
+            ++this.searchId;
+            resultHandler.setResults = this.setResults.bind(this, this.searchId);
+            resultHandler.setError = this.setError.bind(this, this.searchId);
+            this.abortSearchCallback = this.searchCallback(
+                this.searchText,
+                resultHandler
+            );
+        },
+
+        /**
+         * Set the search results
+         * @param {number} searchId - The ID of the current search
+         * @param {Array} items - The search results
+         */
+        setResults(searchId, items) {
+            if (searchId !== this.searchId) {
+                return;
+            }
+
+            var qSwitcher = this;
+            qSwitcher.valueObjects = [];
+
+            // Handle empty results
+            if (items.length == 0) {
+                this.results.innerHTML = '';
+                this.usePane(this.searchText ? this.noResults : this.noSearchTerms);
+                return;
+            }
+
+            // Create results list
+            var ul = document.createElement('ul');
+
+            // Sort items if tracking is enabled
+            if (this.options.trackChildrenAs) {
+                var tracker = sorters.tracker(this.options.trackChildrenAs);
+                items = tracker.sort(items, this.searchText);
+            }
+
+            // Create list items for each result
+            items.forEach((value, index) => {
+                var li = document.createElement('li');
+                var container = document.createElement('div');
+                ul.appendChild(li);
+                li.appendChild(container);
+                qSwitcher.setListText(container, value);
+
+                // Add description if available
+                if (value.description) {
+                    var description = document.createElement('span');
+                    description.className = 'lstr-qswitcher-result-description';
+                    qSwitcher.setListText(description, value.description);
+                    li.insertBefore(description, li.firstChild);
+                }
+
+                // Set data attributes and classes
+                li.dataset.lstrQswitcher = JSON.stringify({'index': index});
+                container.classList.add('lstr-qswitcher-result-container');
+
+                if (value.searchCallback) {
+                    li.classList.add('lstr-qswitcher-result-category');
+                }
+
+                // Store value object
+                qSwitcher.valueObjects[index] = {
+                    'index': index,
+                    'value': value,
+                    'li': li,
+                };
+            });
+
+            // Update DOM
+            this.results.innerHTML = '';
+            this.results.appendChild(ul);
+            this.usePane(this.results);
+
+            // Select first item and scroll
+            qSwitcher.selectIndex(0);
+            qSwitcher.scrollToSelectedItem();
+            if (window.requestAnimationFrame) {
+                window.requestAnimationFrame(() => {
+                    qSwitcher.scrollToSelectedItem();
+                });
+            }
+        },
+
+        /**
+         * Handle search errors
+         * @param {number} searchId - The ID of the current search
+         */
+        setError(searchId) {
+            if (searchId !== this.searchId) {
+                return;
+            }
+            this.usePane(this.oopsResults);
+        },
+
+        /**
+         * Render the breadcrumb navigation
+         */
+        renderBreadcrumb() {
+            if (this.callbackStack.length == 0) {
+                this.domElement.classList.remove('lstr-qswitcher-subsearch');
+                this.breadcrumb.innerHTML = '';
+                return;
+            }
+
+            var ul = document.createElement('ul');
+
+            this.callbackStack.forEach((value, index) => {
+                var li = document.createElement('li');
+                li.textContent = value.text;
+                ul.appendChild(li);
+            });
+
+            this.domElement.classList.add('lstr-qswitcher-subsearch');
+            this.breadcrumb.innerHTML = '';
+            this.breadcrumb.appendChild(ul);
+        },
+
+        /**
+         * Set the text content of a list element
+         * @param {HTMLElement} element - The element to set text for
+         * @param {*} value - The value to set
+         */
+        setListText(element, value) {
+            if (value.html) {
+                element.innerHTML = callbackOrValue(value.html);
+                return;
+            }
+
+            if (value.text) {
+                element.innerHTML = callbackOrValue(value.text);
+                return;
+            }
+
+            element.textContent = value;
+        },
+
+        /**
+         * Select an item by index
+         * @param {number} selectedIndex - The index to select
+         */
+        selectIndex(selectedIndex) {
+            if (this.selectedIndex !== null
+                && this.valueObjects[this.selectedIndex]
+            ) {
+                this.valueObjects[this.selectedIndex]
+                    .li.classList.remove('lstr-qswitcher-result-selected');
+            }
+
+            if (null === selectedIndex || 0 === this.valueObjects.length) {
+                this.selectedIndex = null;
+                return;
+            }
+
+            this.selectedIndex = selectedIndex % this.valueObjects.length;
+
+            if (this.selectedIndex < 0) {
+                this.selectedIndex = this.valueObjects.length - 1;
+            }
+
+            this.valueObjects[this.selectedIndex]
+                .li.classList.add('lstr-qswitcher-result-selected');
+        },
+
+        /**
+         * Scroll to the selected item
+         */
+        scrollToSelectedItem() {
+            var results = this.results;
+
+            if (!this.selectedIndex) {
+                results.scrollTop = 0;
+                return;
+            }
+
+            var li = this.valueObjects[this.selectedIndex].li;
+
+            var topOfLi = li.offsetTop - li.parentElement.offsetTop;
+            var bottomOfLi = topOfLi + li.offsetHeight;
+            var scrollTop = results.scrollTop;
+            var scrollBottom = scrollTop + results.offsetHeight;
+
+            if (bottomOfLi > scrollBottom || topOfLi < scrollTop) {
+                results.scrollTop = topOfLi;
+            }
+        },
+
+        /**
+         * Adjust the selected index
+         * @param {number} adjustment - The amount to adjust by
+         */
+        adjustSelectedIndex(adjustment) {
+            this.selectIndex(this.selectedIndex + adjustment);
+            this.scrollToSelectedItem();
+        },
+
+        /**
+         * Toggle the switcher open/closed
+         */
+        toggleSwitcher() {
+            if (this.isOpen) {
+                this.closeSwitcher();
+                return;
+            }
+            return this.openSwitcher();
+        },
+
+        /**
+         * Open the switcher
+         */
+        openSwitcher() {
+            this.useRootCallback();
+            this.search.value = '';
+            this.searchText = '';
+            this.renderList();
+
+            this.parentDom.classList.toggle('lstr-qswitcher-noscroll');
+            this.domElement.style.display = 'block';
+            this.isOpen = true;
+            this.search.focus();
+        },
+
+        /**
+         * Close the switcher
+         */
+        closeSwitcher() {
+            this.parentDom.classList.remove('lstr-qswitcher-noscroll');
+            this.domElement.style.display = 'none';
+            this.isOpen = false;
+        },
+
+        /**
+         * Handle selection of an item
+         * @param {number} index - The index of the selected item
+         * @param {Event} event - The triggering event
+         */
+        triggerSelect(index, event) {
+            if (null === index) {
+                return;
+            }
+
+            var selectedValue = this.valueObjects[index].value;
+            var selectedResult = Object.create(SelectedResult);
+            selectedResult.init(selectedValue, this.searchText, this.options, event);
+
+            if (selectedValue.searchCallback) {
+                var isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
+                selectedResult.track();
+                if (false === isSelectionAllowed) {
+                    return;
+                }
+
+                this.callbackStack.push({
+                    'text': selectedValue.breadcrumbText,
+                    'parent': this.options,
+                });
+
+                this.options = selectedValue;
+                this.searchCallback = selectedValue.searchCallback;
+                if (selectedValue.searchDelay) {
+                    this.searchDelay = selectedValue.searchDelay;
+                }
+                if (selectedValue.selectCallback) {
+                    this.selectCallback = selectedValue.selectCallback;
+                }
+                if (selectedValue.selectChildSearchCallback) {
+                    this.selectChildSearchCallback
+                        = selectedValue.selectChildSearchCallback;
+                }
+
+                if (!selectedResult.isSearchTextClearingPrevented()) {
+                    this.search.value = '';
+                    this.searchText = '';
+                }
+
+                this.valueObjects = [];
+                this.selectIndex(null);
+                this.search.focus();
+                this.renderList();
+
+                return;
+            }
+
+            var isCloseAllowed = this.selectCallback(selectedResult);
+            selectedResult.track();
+            if (false !== isCloseAllowed) {
+                this.closeSwitcher();
+            }
+        },
+
+        /**
+         * Pop the last callback from the stack
+         * @returns {boolean} Whether a callback was popped
+         */
+        popCallback() {
+            var callbacks = this.callbackStack.pop();
+            if (!callbacks) {
+                return false;
+            }
+
+            this.setOptions(callbacks.parent);
+
+            return true;
+        },
+
+        /**
+         * Reset to root callback
+         */
+        useRootCallback() {
+            while (this.callbackStack.length > 0) {
+                this.popCallback();
+            }
+        },
+
+        /**
+         * Switch to a different pane
+         * @param {HTMLElement} paneToUse - The pane to show
+         */
+        usePane(paneToUse) {
+            this.results.style.display = 'none';
+            this.noSearchTerms.style.display = 'none';
+            this.noResults.style.display = 'none';
+            this.oopsResults.style.display = 'none';
+            this.loading.style.display = 'none';
+
+            paneToUse.style.display = 'block';
+        },
+
+        /**
+         * Set the options
+         * @param {Object} options - The options to set
+         */
+        setOptions(options) {
+            this.options = options;
+
+            this.searchCallback = options.searchCallback;
+            this.searchDelay = options.searchDelay;
+            this.selectCallback = options.selectCallback;
+            this.selectChildSearchCallback = options.selectChildSearchCallback;
+        },
+    };
+
+    /**
+     * Create and return a new QuickSwitcher instance
+     * @param {Object} options - Configuration options
+     * @returns {Object} The QuickSwitcher instance
+     */
+    const lstrQuickSwitcher = (options) => {
+        const parentDom = document.body;
+
+        const quickSwitcher = Object.create(QuickSwitcher);
+        quickSwitcher.init(parentDom, options);
+
+        return {
+            open: quickSwitcher.openSwitcher.bind(quickSwitcher),
+        };
+    };
+
+    return lstrQuickSwitcher;
 };
 
+// Define the module
 define(
-  'quick-switcher',
-  ['filters', 'selected-result', 'sorters', 'text!quick-switcher.html'],
-  quickSwitcher
+    'quick-switcher',
+    ['filters', 'selected-result', 'sorters', 'text!quick-switcher.html'],
+    quickSwitcher
 );
