@@ -93,7 +93,8 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
 
             // Store parent DOM and create main element
             this.parentDom = parentDom;
-            this.domElement = html;
+            this.domElement = document.createElement('div');
+            this.domElement.innerHTML = html;
             parentDom.appendChild(this.domElement);
 
             // Cache DOM elements
@@ -109,55 +110,54 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
             const domElement = this.domElement;
 
             // Prevent form submission
-            domElement.querySelector('.lstr-qswitcher-popup').addEventListener('submit', (event) => {
-                event.preventDefault();
+            domElement.querySelector('.lstr-qswitcher-popup').addEventListener('submit', (ev) => {
+                ev.preventDefault();
             });
 
             // Close on overlay click
-            parentDom.querySelector('.lstr-qswitcher-overlay').addEventListener('click', (event) => {
+            parentDom.querySelector('.lstr-qswitcher-overlay').addEventListener('click', (ev) => {
                 qSwitcher.closeSwitcher();
-                event.preventDefault();
+                ev.preventDefault();
             });
 
             // Handle keyboard shortcuts
-            parentDom.addEventListener('keydown', (event) => {
-                const keyPressed = String.fromCharCode(event.which);
-                if (event[qSwitcher.modifierKey] && keyPressed === qSwitcher.hotKey) {
+            parentDom.addEventListener('keydown', (ev) => {
+                const keyPressed = String.fromCharCode(ev.which);
+                if (ev[qSwitcher.modifierKey] && keyPressed === qSwitcher.hotKey) {
                     qSwitcher.toggleSwitcher();
-                    event.preventDefault();
+                    ev.preventDefault();
                 }
             });
 
             // Handle navigation keys when switcher is open
-            document.documentElement.addEventListener('keydown', (event) => {
+            document.documentElement.addEventListener('keydown', (ev) => {
                 if (!qSwitcher.isOpen) {
                     return;
                 }
 
-                if (event.which === 38) { // up arrow key
+                if (ev.which === 38) { // up arrow key
                     qSwitcher.adjustSelectedIndex(-1);
-                    event.preventDefault();
-                } else if (event.which === 40) { // down arrow key
+                    ev.preventDefault();
+                } else if (ev.which === 40) { // down arrow key
                     qSwitcher.adjustSelectedIndex(1);
-                    event.preventDefault();
-                } else if (event.which === 27) { // escape key
+                    ev.preventDefault();
+                } else if (ev.which === 27) { // escape key
                     qSwitcher.closeSwitcher();
-                    event.preventDefault();
-                } else if (13 === event.keyCode) { // enter key
-                    qSwitcher.triggerSelect(qSwitcher.selectedIndex, event);
-                    event.preventDefault();
+                    ev.preventDefault();
+                } else if (13 === ev.keyCode) { // enter key
+                    qSwitcher.triggerSelect(qSwitcher.selectedIndex, ev);
+                    ev.preventDefault();
                 }
             });
 
             // Close button handler
-            this.close.addEventListener('click', (event) => {
+            this.close.addEventListener('click', () => {
                 qSwitcher.closeSwitcher();
             });
 
             // Search input handler
-            this.search.addEventListener('keyup', (event) => {
+            this.search.addEventListener('keyup', (ev) => {
                 const searchText = qSwitcher.search.value;
-
                 if (qSwitcher.searchDelayTimeout) {
                     clearTimeout(qSwitcher.searchDelayTimeout);
                     qSwitcher.searchDelayTimeout = null;
@@ -169,7 +169,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                         qSwitcher.searchText = searchText;
                         qSwitcher.renderList();
                     }, qSwitcher.searchDelay);
-                } else if (event.which === 8 && '' === searchText) {
+                } else if (ev.which === 8 && '' === searchText) {
                     // Handle backspace with empty search
                     qSwitcher.popCallback();
                     qSwitcher.renderList();
@@ -177,27 +177,36 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
             });
 
             // Mouse over handler for results
-            domElement.addEventListener('mouseover', (event) => {
-                const li = event.target.closest('.lstr-qswitcher-results li');
+            domElement.addEventListener('mouseover', (ev) => {
+                const li = ev.target.closest('.lstr-qswitcher-results li');
                 if (li) {
-                    qSwitcher.selectIndex(li.dataset.lstrQswitcher.index);
+                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
+                    if (dataset) {
+                        qSwitcher.selectIndex(dataset.index);
+                    }
                 }
             });
 
             // Touch handler for results
-            domElement.addEventListener('touchstart', (event) => {
-                const li = event.target.closest('.lstr-qswitcher-results li');
+            domElement.addEventListener('touchstart', (ev) => {
+                const li = ev.target.closest('.lstr-qswitcher-results li');
                 if (li) {
-                    qSwitcher.selectIndex(li.dataset.lstrQswitcher.index);
-                    qSwitcher.search.blur();
+                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
+                    if (dataset) {
+                        qSwitcher.selectIndex(dataset.index);
+                        qSwitcher.search.blur();
+                    }
                 }
             });
 
             // Click handler for results
-            domElement.addEventListener('click', (event) => {
-                const li = event.target.closest('.lstr-qswitcher-results li');
+            domElement.addEventListener('click', (ev) => {
+                const li = ev.target.closest('.lstr-qswitcher-results li');
                 if (li) {
-                    qSwitcher.triggerSelect(li.dataset.lstrQswitcher.index, event);
+                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
+                    if (dataset) {
+                        qSwitcher.triggerSelect(dataset.index, ev);
+                    }
                 }
             });
         },
@@ -435,7 +444,9 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
             this.renderList();
 
             this.parentDom.classList.toggle('lstr-qswitcher-noscroll');
-            this.domElement.style.display = 'block';
+            this.domElement.querySelector('.lstr-qswitcher-overlay').style.display = 'block';
+            this.domElement.querySelector('.lstr-qswitcher-container').style.display = 'block';
+
             this.isOpen = true;
             this.search.focus();
         },
@@ -445,7 +456,9 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
          */
         closeSwitcher() {
             this.parentDom.classList.remove('lstr-qswitcher-noscroll');
-            this.domElement.style.display = 'none';
+            this.domElement.querySelector('.lstr-qswitcher-overlay').style.display = 'none';
+            this.domElement.querySelector('.lstr-qswitcher-container').style.display = 'none';
+
             this.isOpen = false;
         },
 

@@ -9,7 +9,7 @@
     },
     "scripts": {
         "build": "npm run build:js && npm run build:css",
-        "build:js": "r.js -o build.js",
+        "build:js": "node build.js",
         "build:css": "sass --style=compressed --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
         "update": "npm-check-updates -u",
         "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
@@ -46,6 +46,7 @@
         "requirejs": "^2.3.7",
         "sass": "^1.89.2",
         "tape": "^5.9.0",
+        "terser": "^5.43.0",
         "text": "github:requirejs/text"
     }
 }
