@@ -1,3 +1,8 @@
+/**
+ * Selected Result Module
+ * Wraps a selected item with metadata and control methods for tracking
+ * and search text clearing behavior.
+ */
 define('selected-result', ['factories'], function(factories) {
     return {
         init(selectedValue, searchText, parent, domEvent) {
@@ -14,7 +19,7 @@ define('selected-result', ['factories'], function(factories) {
         },
 
         track() {
-            if (!this.parent.trackChildrenAs && !this.trackingPrevented) {
+            if (!this.parent.trackChildrenAs || this.trackingPrevented) {
                 return;
             }
 

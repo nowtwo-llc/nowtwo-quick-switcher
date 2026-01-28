@@ -1,10 +1,14 @@
+/**
+ * Filters Module
+ * Provides search matching logic for substring and multi-word filtering.
+ */
 define('filters', [], () => {
     return {
         areWordsFound(needle, haystack) {
             const pieces = needle.match(/\b\w+\b/g);
             
             for (let i = 0; i < pieces.length; i++) {
-                if (haystack.indexOf(pieces[i]) == -1) {
+                if (!haystack.includes(pieces[i])) {
                     return false;
                 }
             }
@@ -13,7 +17,7 @@ define('filters', [], () => {
         },
 
         isMatch(needle, haystack) {
-            if (haystack.indexOf(needle) != -1) {
+            if (haystack.includes(needle)) {
                 return true;
             } else if (this.areWordsFound(needle, haystack)) {
                 return true;

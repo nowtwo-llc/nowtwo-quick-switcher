@@ -11,9 +11,10 @@ define('tracker', ['tracker/selection'], function(Selection) {
      * @returns {number}
      */
     const compareLowerFirst = (a, b) => {
-        if (a != b) {
+        if (a !== b) {
             return a < b ? -1 : 1;
         }
+        return 0;
     };
     /**
      * Compare two values, sorting greater values first.

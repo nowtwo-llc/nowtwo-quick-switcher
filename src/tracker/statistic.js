@@ -103,17 +103,17 @@ define('tracker/statistic', function() {
                     }
 
                     // Last week: medium weight
-                    if (timestamp > now - (3600 * 7)) {
+                    if (timestamp > now - (3600 * 24 * 7)) {
                         return score + 40;
                     }
 
                     // Last month: medium-low weight
-                    if (timestamp > now - (3600 * 30)) {
+                    if (timestamp > now - (3600 * 24 * 30)) {
                         return score + 20;
                     }
 
                     // Last 3 months: low weight
-                    if (timestamp > now - (3600 * 90)) {
+                    if (timestamp > now - (3600 * 24 * 90)) {
                         return score + 10;
                     }
 

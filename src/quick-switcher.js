@@ -49,7 +49,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
 
             // Set modifier key based on platform (Ctrl for Windows/Linux, Cmd for Mac)
             this.modifierKey = 'ctrlKey';
-            if (navigator.platform.toLowerCase().indexOf('mac') != -1) {
+            if (navigator.platform.toLowerCase().includes('mac')) {
                 this.modifierKey = 'metaKey';
             }
 
@@ -122,8 +122,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
 
             // Handle keyboard shortcuts
             parentDom.addEventListener('keydown', (ev) => {
-                const keyPressed = String.fromCharCode(ev.which);
-                if (ev[qSwitcher.modifierKey] && keyPressed === qSwitcher.hotKey) {
+                if (ev[qSwitcher.modifierKey] && ev.key.toUpperCase() === qSwitcher.hotKey) {
                     qSwitcher.toggleSwitcher();
                     ev.preventDefault();
                 }
@@ -135,16 +134,16 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                     return;
                 }
 
-                if (ev.which === 38) { // up arrow key
+                if (ev.key === 'ArrowUp') {
                     qSwitcher.adjustSelectedIndex(-1);
                     ev.preventDefault();
-                } else if (ev.which === 40) { // down arrow key
+                } else if (ev.key === 'ArrowDown') {
                     qSwitcher.adjustSelectedIndex(1);
                     ev.preventDefault();
-                } else if (ev.which === 27) { // escape key
+                } else if (ev.key === 'Escape') {
                     qSwitcher.closeSwitcher();
                     ev.preventDefault();
-                } else if (13 === ev.keyCode) { // enter key
+                } else if (ev.key === 'Enter') {
                     qSwitcher.triggerSelect(qSwitcher.selectedIndex, ev);
                     ev.preventDefault();
                 }
@@ -169,7 +168,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                         qSwitcher.searchText = searchText;
                         qSwitcher.renderList();
                     }, qSwitcher.searchDelay);
-                } else if (ev.which === 8 && '' === searchText) {
+                } else if (ev.key === 'Backspace' && '' === searchText) {
                     // Handle backspace with empty search
                     qSwitcher.popCallback();
                     qSwitcher.renderList();
@@ -225,7 +224,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
             this.usePane(this.loading);
 
             // Create result handler and initiate search
-            var resultHandler = Object.create(ResultHandler);
+            const resultHandler = Object.create(ResultHandler);
             ++this.searchId;
             resultHandler.setResults = this.setResults.bind(this, this.searchId);
             resultHandler.setError = this.setError.bind(this, this.searchId);
@@ -245,36 +244,36 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                 return;
             }
 
-            var qSwitcher = this;
+            const qSwitcher = this;
             qSwitcher.valueObjects = [];
 
             // Handle empty results
-            if (items.length == 0) {
+            if (items.length === 0) {
                 this.results.innerHTML = '';
                 this.usePane(this.searchText ? this.noResults : this.noSearchTerms);
                 return;
             }
 
             // Create results list
-            var ul = document.createElement('ul');
+            const ul = document.createElement('ul');
 
             // Sort items if tracking is enabled
             if (this.options.trackChildrenAs) {
-                var tracker = sorters.tracker(this.options.trackChildrenAs);
+                const tracker = sorters.tracker(this.options.trackChildrenAs);
                 items = tracker.sort(items, this.searchText);
             }
 
             // Create list items for each result
             items.forEach((value, index) => {
-                var li = document.createElement('li');
-                var container = document.createElement('div');
+                const li = document.createElement('li');
+                const container = document.createElement('div');
                 ul.appendChild(li);
                 li.appendChild(container);
                 qSwitcher.setListText(container, value);
 
                 // Add description if available
                 if (value.description) {
-                    var description = document.createElement('span');
+                    const description = document.createElement('span');
                     description.className = 'lstr-qswitcher-result-description';
                     qSwitcher.setListText(description, value.description);
                     li.insertBefore(description, li.firstChild);
@@ -326,16 +325,16 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
          * Render the breadcrumb navigation
          */
         renderBreadcrumb() {
-            if (this.callbackStack.length == 0) {
+            if (this.callbackStack.length === 0) {
                 this.domElement.classList.remove('lstr-qswitcher-subsearch');
                 this.breadcrumb.innerHTML = '';
                 return;
             }
 
-            var ul = document.createElement('ul');
+            const ul = document.createElement('ul');
 
             this.callbackStack.forEach((value, index) => {
-                var li = document.createElement('li');
+                const li = document.createElement('li');
                 li.textContent = value.text;
                 ul.appendChild(li);
             });
@@ -395,19 +394,19 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
          * Scroll to the selected item
          */
         scrollToSelectedItem() {
-            var results = this.results;
+            const results = this.results;
 
-            if (!this.selectedIndex) {
+            if (this.selectedIndex === null) {
                 results.scrollTop = 0;
                 return;
             }
 
-            var li = this.valueObjects[this.selectedIndex].li;
+            const li = this.valueObjects[this.selectedIndex].li;
 
-            var topOfLi = li.offsetTop - li.parentElement.offsetTop;
-            var bottomOfLi = topOfLi + li.offsetHeight;
-            var scrollTop = results.scrollTop;
-            var scrollBottom = scrollTop + results.offsetHeight;
+            const topOfLi = li.offsetTop - li.parentElement.offsetTop;
+            const bottomOfLi = topOfLi + li.offsetHeight;
+            const scrollTop = results.scrollTop;
+            const scrollBottom = scrollTop + results.offsetHeight;
 
             if (bottomOfLi > scrollBottom || topOfLi < scrollTop) {
                 results.scrollTop = topOfLi;
@@ -472,12 +471,12 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                 return;
             }
 
-            var selectedValue = this.valueObjects[index].value;
-            var selectedResult = Object.create(SelectedResult);
+            const selectedValue = this.valueObjects[index].value;
+            const selectedResult = Object.create(SelectedResult);
             selectedResult.init(selectedValue, this.searchText, this.options, event);
 
             if (selectedValue.searchCallback) {
-                var isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
+                const isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
                 selectedResult.track();
                 if (false === isSelectionAllowed) {
                     return;
@@ -514,7 +513,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
                 return;
             }
 
-            var isCloseAllowed = this.selectCallback(selectedResult);
+            const isCloseAllowed = this.selectCallback(selectedResult);
             selectedResult.track();
             if (false !== isCloseAllowed) {
                 this.closeSwitcher();
@@ -526,7 +525,7 @@ const quickSwitcher = (filters, SelectedResult, sorters, html) => {
          * @returns {boolean} Whether a callback was popped
          */
         popCallback() {
-            var callbacks = this.callbackStack.pop();
+            const callbacks = this.callbackStack.pop();
             if (!callbacks) {
                 return false;
             }

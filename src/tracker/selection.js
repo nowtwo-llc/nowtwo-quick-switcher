@@ -59,7 +59,7 @@ define('tracker/selection', ['tracker/statistic'], function(Statistic) {
             // Normalize and increment search-specific statistics
             searchText = canonicalizeSearchKey(searchText);
 
-            if(!this.searchKeys[searchText]) {
+            if (!this.searchKeys[searchText]) {
                 this.searchKeys[searchText] = Statistic.create();
             }
             this.searchKeys[searchText].increment();
@@ -74,7 +74,7 @@ define('tracker/selection', ['tracker/statistic'], function(Statistic) {
             searchText = canonicalizeSearchKey(searchText);
 
             // If no search text or no statistics for this search, return half of overall score
-            if(!searchText || !this.searchKeys[searchText]) {
+            if (!searchText || !this.searchKeys[searchText]) {
                 return this.overall.score() * 0.5;
             }
 

@@ -1,14 +1,14 @@
 {
   "extends": "google",
   "env": {
-    "browser": true,
-    "jquery": true
+    "browser": true
   },
   "globals": {
-    "window": true,
-    "$": true
+    "window": true
   },
   "rules": {
-    "no-var": 0
+    "no-var": 1,
+    "eqeqeq": 1,
+    "prefer-const": 1
   }
 }
