@@ -1,3 +1,29 @@
+// Quick Switcher
+//
+// Theming: every color reads through a CSS custom property with the default
+// as its fallback, so consumers override by setting variables anywhere up the
+// tree -- :root, body, or a wrapper element. The variables are deliberately
+// NOT declared on the component itself; doing so would out-specify a :root
+// override and defeat the point.
+//
+//   :root {
+//     --lstr-qswitcher-bg:          #f5f6f7;  // panel background
+//     --lstr-qswitcher-fg:          #16181d;  // primary text
+//     --lstr-qswitcher-muted:       #5f6673;  // descriptions, breadcrumbs
+//     --lstr-qswitcher-surface:     #ffffff;  // search box and footer
+//     --lstr-qswitcher-accent:      #5468ff;  // search focus ring and icon
+//     --lstr-qswitcher-input-fg:    #000000;  // search text
+//     --lstr-qswitcher-selected-bg: #3274ce;  // highlighted result
+//     --lstr-qswitcher-selected-fg: #ffffff;  // highlighted result text
+//     --lstr-qswitcher-key-fg:      #969faf;  // footer key hints
+//     --lstr-qswitcher-close-fg:    #666666;  // mobile close button
+//     --lstr-qswitcher-overlay-bg:  rgba(0, 0, 0, 0.5);
+//   }
+//
+// The panel paints its own background, so it never inherits text color from
+// the host page -- a dark-themed host would otherwise render light text on a
+// light panel.
+
 body.lstr-qswitcher-noscroll
 {
   overflow: hidden;
@@ -12,7 +38,7 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
 .lstr-qswitcher-overlay
 {
   display: none;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--lstr-qswitcher-overlay-bg, rgba(0, 0, 0, 0.5));
   position: fixed;
   top: 0;
   bottom: 0;
@@ -27,9 +53,9 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
 {
   margin: 12px;
   padding: 0 12px;
-  background-color: #ffffff;
+  background-color: var(--lstr-qswitcher-surface, #ffffff);
   border-radius: 4px;
-  box-shadow: inset 0 0 0 2px #5468ff;
+  box-shadow: inset 0 0 0 2px var(--lstr-qswitcher-accent, #5468ff);
   height: 56px;
   display: flex;
   width: 100%;
@@ -37,7 +63,7 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
 }
 .lstr-qswitcher-search-icon
 {
-  color: #5468ff;
+  color: var(--lstr-qswitcher-accent, #5468ff);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -59,7 +85,7 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
   padding: 0 12px;
   height: 44px;
   border-radius: 0 0 8px 8px;
-  background-color: #ffffff;
+  background-color: var(--lstr-qswitcher-surface, #ffffff);
   box-shadow: 0 -1px 0 0 #e0e3e8, 0 -3px 6px 0 rgba(69, 98, 155, .12);
 }
 
@@ -71,7 +97,7 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
   // The panel paints its own light background, so it must not inherit text
   // color from the host page -- a dark-themed host would otherwise render
   // light text on the light panel. Descendants inherit from here.
-  color: #16181d;
+  color: var(--lstr-qswitcher-fg, #16181d);
 }
 
 input.lstr-qswitcher-search
@@ -79,7 +105,7 @@ input.lstr-qswitcher-search
   appearance: none;
   border: 0;
   padding: 0 0 0 8px;
-  color: #000000;
+  color: var(--lstr-qswitcher-input-fg, #000000);
   font-size: 1.5em;
   font-weight: 400;
   line-height: 56px;
@@ -132,7 +158,7 @@ input.lstr-qswitcher-search
 
   .lstr-qswitcher-popup
   {
-    background-color: #f5f6f7;
+    background-color: var(--lstr-qswitcher-bg, #f5f6f7);
     height: 100%;
     border: 0;
     border-radius: 0;
@@ -144,7 +170,7 @@ input.lstr-qswitcher-search
   .lstr-qswitcher-close:focus,
   .lstr-qswitcher-close:hover
   {
-    color: #666666;
+    color: var(--lstr-qswitcher-close-fg, #666666);
     display: inline-block;
     font-size: 1.6em;
     line-height: 0.5em;
@@ -183,14 +209,14 @@ input.lstr-qswitcher-search
   .lstr-qswitcher-help
   {
     margin: 10px 0 0 0;
-    color: #969faf;
+    color: var(--lstr-qswitcher-key-fg, #969faf);
   }
   .lstr-qswitcher-command-key
   {
     display: flex;
     height: 18px;
     width: 20px;
-    color: #969faf;
+    color: var(--lstr-qswitcher-key-fg, #969faf);
     align-items: center;
     justify-content: center;
     padding: 0 0 1px;
@@ -222,7 +248,7 @@ input.lstr-qswitcher-search
   .lstr-qswitcher-popup
   {
     position: relative;
-    background-color: #f5f6f7;
+    background-color: var(--lstr-qswitcher-bg, #f5f6f7);
     box-shadow: inset 1px 1px 0 0 hsla(0,0%,100%,.5),0 3px 8px 0 #555a64;
     border-radius: 6px;
     display: flex;
@@ -294,7 +320,7 @@ input.lstr-qswitcher-search
   padding: 0;
   font-size: .9em;
   // #999 on the #f5f6f7 panel is ~2.8:1, below the WCAG AA 4.5:1 floor.
-  color: #5f6673;
+  color: var(--lstr-qswitcher-muted, #5f6673);
   float: left;
 
 }
@@ -348,8 +374,8 @@ input.lstr-qswitcher-search
 
 li.lstr-qswitcher-result-selected
 {
-  background-color: #3274ce;
-  color: #ffffff;
+  background-color: var(--lstr-qswitcher-selected-bg, #3274ce);
+  color: var(--lstr-qswitcher-selected-fg, #ffffff);
   border-radius: 3px;
 }
 
@@ -358,9 +384,9 @@ li .lstr-qswitcher-result-description {
   margin-left: 10px;
   float: right;
   // #999 on the #f5f6f7 panel is ~2.8:1, below the WCAG AA 4.5:1 floor.
-  color: #5f6673;
+  color: var(--lstr-qswitcher-muted, #5f6673);
 }
 
 li.lstr-qswitcher-result-selected .lstr-qswitcher-result-description {
-  color: #ffffff;
+  color: var(--lstr-qswitcher-selected-fg, #ffffff);
 }

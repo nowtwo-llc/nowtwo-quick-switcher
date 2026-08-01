@@ -215,6 +215,52 @@ Every class is prefixed `lstr-qswitcher-`. The main hooks are
 `-result-container`, `-result-description`, `-result-selected`,
 `-result-category`, `-breadcrumb`, and `-footer`.
 
+### Theming
+
+Every color reads through a CSS custom property, so you can retheme the
+switcher without overriding a single selector. Set the variables anywhere up
+the tree — `:root`, `body`, or a wrapper element:
+
+```css
+:root {
+  --lstr-qswitcher-bg:          #f5f6f7;  /* panel background */
+  --lstr-qswitcher-fg:          #16181d;  /* primary text */
+  --lstr-qswitcher-muted:       #5f6673;  /* descriptions, breadcrumbs */
+  --lstr-qswitcher-surface:     #ffffff;  /* search box and footer */
+  --lstr-qswitcher-accent:      #5468ff;  /* search focus ring and icon */
+  --lstr-qswitcher-input-fg:    #000000;  /* search text */
+  --lstr-qswitcher-selected-bg: #3274ce;  /* highlighted result */
+  --lstr-qswitcher-selected-fg: #ffffff;  /* highlighted result text */
+  --lstr-qswitcher-key-fg:      #969faf;  /* footer key hints */
+  --lstr-qswitcher-close-fg:    #666666;  /* mobile close button */
+  --lstr-qswitcher-overlay-bg:  rgba(0, 0, 0, 0.5);
+}
+```
+
+Those are the defaults, so you only need to declare the ones you change. A
+dark theme is eleven lines:
+
+```css
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lstr-qswitcher-bg: #1c1f25;
+    --lstr-qswitcher-fg: #e8eaed;
+    --lstr-qswitcher-muted: #9aa1ac;
+    --lstr-qswitcher-surface: #14161a;
+    --lstr-qswitcher-accent: #6c9bff;
+    --lstr-qswitcher-input-fg: #e8eaed;
+    --lstr-qswitcher-selected-bg: #2f6fed;
+    --lstr-qswitcher-key-fg: #8b93a1;
+    --lstr-qswitcher-close-fg: #9aa1ac;
+    --lstr-qswitcher-overlay-bg: rgba(0, 0, 0, 0.65);
+  }
+}
+```
+
+The switcher never inherits text color from the host page — it paints its own
+background, so inheriting would put light text on a light panel in any
+dark-themed app.
+
 ## Browser support
 
 Modern evergreen browsers. The build targets ES2020 and relies on
