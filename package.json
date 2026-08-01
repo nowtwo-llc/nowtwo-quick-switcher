@@ -1,52 +1,87 @@
 {
-    "author": "nowtwo-llc",
     "name": "@nowtwo-llc/quick-switcher",
-    "description": "nowtwo-llc quick switcher repo for the main application. Heavily adapted from Matt Light's quick switcher project.",
-    "repository": "git@github.com:nowtwo-llc/quick-switcher.git",
-    "license": "UNLICENSED",
-    "publishConfig": {
-        "registry": "https://npm.pkg.github.com/"
+    "version": "4.0.0",
+    "description": "Keyboard-driven command palette for the web, with nested drill-down searches, breadcrumb navigation, and usage-based result ranking. No runtime dependencies.",
+    "keywords": [
+        "quick-switcher",
+        "command-palette",
+        "cmd-k",
+        "keyboard",
+        "search",
+        "navigation",
+        "spotlight",
+        "typeahead"
+    ],
+    "author": "NowTwo LLC",
+    "license": "MIT",
+    "homepage": "https://github.com/nowtwo-llc/nowtwo-quick-switcher",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/nowtwo-llc/nowtwo-quick-switcher.git"
     },
-    "scripts": {
-        "build": "npm run build:js && npm run build:css",
-        "build:js": "node build.js",
-        "build:css": "sass --style=compressed --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
-        "update": "npm-check-updates -u",
-        "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
-        "watch:js": "npm-watch build:js",
-        "watch:css": "npm-watch build:css",
-        "test": "faucet test/"
+    "bugs": {
+        "url": "https://github.com/nowtwo-llc/nowtwo-quick-switcher/issues"
     },
-    "version": "3.0.0",
-    "watch": {
-        "build:js": {
-            "patterns": [
-                "src"
-            ],
-            "extensions": "js",
-            "quiet": false
+    "type": "module",
+    "main": "./dist/quick-switcher.min.js",
+    "module": "./dist/quick-switcher.esm.js",
+    "types": "./types/index.d.ts",
+    "sideEffects": [
+        "*.css",
+        "*.scss"
+    ],
+    "exports": {
+        ".": {
+            "types": "./types/index.d.ts",
+            "import": "./dist/quick-switcher.esm.js",
+            "require": "./dist/quick-switcher.min.js",
+            "default": "./dist/quick-switcher.min.js"
         },
-        "build:css": {
-            "patterns": [
-                "src"
-            ],
-            "extensions": "scss",
-            "quiet": false
-        }
+        "./style.css": "./dist/quick-switcher.min.css",
+        "./scss": "./src/quick-switcher.scss",
+        "./package.json": "./package.json"
     },
     "files": [
-        "dist/"
+        "dist/",
+        "types/",
+        "src/quick-switcher.scss"
     ],
+    "engines": {
+        "node": ">=20"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "scripts": {
+        "clean": "node scripts/clean.mjs",
+        "build": "npm run clean && npm run build:js && npm run build:css",
+        "build:js": "vite build",
+        "build:css": "sass --style=compressed --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
+        "build:demo": "vite build --config demo/vite.config.js",
+        "demo": "vite --config demo/vite.config.js",
+        "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
+        "watch:js": "vite build --watch",
+        "watch:css": "sass --watch --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "typecheck": "tsc -p tsconfig.json",
+        "update": "npm-check-updates -u",
+        "prepublishOnly": "npm run build"
+    },
     "devDependencies": {
-        "almond": "^0.3.3",
-        "concurrently": "^9.1.2",
-        "faucet": "^0.0.4",
-        "npm-check-updates": "^19.3.2",
-        "npm-watch": "^0.13.0",
-        "requirejs": "^2.3.7",
-        "sass": "^1.89.2",
-        "tape": "^5.9.0",
-        "terser": "^5.43.0",
-        "text": "github:requirejs/text"
+        "@eslint/js": "^9.39.0",
+        "@vitest/coverage-v8": "^3.2.4",
+        "concurrently": "^10.0.4",
+        "eslint": "^9.39.0",
+        "globals": "^16.5.0",
+        "jsdom": "^28.0.0",
+        "npm-check-updates": "^23.0.0",
+        "sass": "^1.102.0",
+        "typescript": "^5.9.3",
+        "vite": "^7.1.14",
+        "vitest": "^3.2.4"
     }
 }

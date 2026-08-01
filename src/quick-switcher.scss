@@ -67,6 +67,11 @@ body.lstr-qswitcher-noscroll .lstr-qswitcher-container {
 {
   display: none;
   position: fixed;
+
+  // The panel paints its own light background, so it must not inherit text
+  // color from the host page -- a dark-themed host would otherwise render
+  // light text on the light panel. Descendants inherit from here.
+  color: #16181d;
 }
 
 input.lstr-qswitcher-search
@@ -149,6 +154,14 @@ input.lstr-qswitcher-search
     float: right;
     text-align: right;
     text-decoration: none;
+
+    // The close control is a <button> for accessibility; strip the user-agent
+    // chrome so it renders as the plain glyph it was as an <a>.
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    appearance: none;
   }
 }
 
@@ -280,7 +293,8 @@ input.lstr-qswitcher-search
   margin: 0;
   padding: 0;
   font-size: .9em;
-  color: #999;
+  // #999 on the #f5f6f7 panel is ~2.8:1, below the WCAG AA 4.5:1 floor.
+  color: #5f6673;
   float: left;
 
 }
@@ -343,7 +357,8 @@ li .lstr-qswitcher-result-description {
   font-size: .9em;
   margin-left: 10px;
   float: right;
-  color: #999;
+  // #999 on the #f5f6f7 panel is ~2.8:1, below the WCAG AA 4.5:1 floor.
+  color: #5f6673;
 }
 
 li.lstr-qswitcher-result-selected .lstr-qswitcher-result-description {

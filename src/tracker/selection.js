@@ -1,85 +1,91 @@
 /**
- * Selection Tracker Module
- * Tracks and manages selection statistics for search terms and overall usage.
- * Provides scoring mechanism based on selection frequency and recency.
+ * Selection
+ *
+ * Tracks selection statistics for a single item, both overall and per search
+ * term, so that scoring can favor the item you usually pick for a given query.
  */
-define('tracker/selection', ['tracker/statistic'], function(Statistic) {
+
+import Statistic from './statistic.js';
+
+/**
+ * Normalize a search key so lookups are case-insensitive.
+ *
+ * @param {*} searchKey - The search key to normalize.
+ * @returns {string} The lowercase key, or '' for null/undefined.
+ */
+const canonicalizeSearchKey = (searchKey) => {
+    if (searchKey === null || searchKey === undefined) {
+        return '';
+    }
+
+    return String(searchKey).toLowerCase();
+};
+
+export const Selection = {
     /**
-     * Normalizes search keys to lowercase for consistent comparison
-     * @param {string} searchKey - The search key to normalize
-     * @returns {string} The normalized search key in lowercase
+     * Initialize the selection, tolerating partial or malformed stored data.
+     *
+     * @param {Object} [data] - Previously persisted data to rehydrate from.
+     * @param {Object} [data.overall] - Overall selection statistics.
+     * @param {Object} [data.searchKeys] - Per-search-term statistics.
      */
-    const canonicalizeSearchKey = (searchKey) => {
-        return searchKey.toLowerCase();
-    };
+    init(data) {
+        this.overall = Statistic.create(data ? data.overall : undefined);
+        this.searchKeys = {};
 
-    return {
-        /**
-         * Initialize the selection tracker with optional existing data
-         * @param {Object} [data] - Optional data to initialize the tracker with
-         * @param {Object} [data.overall] - Overall selection statistics
-         * @param {Object} [data.searchKeys] - Statistics for specific search keys
-         */
-        init(data) {
-            if (data) {
-                const selection = this;
+        if (!data || !data.searchKeys || typeof data.searchKeys !== 'object') {
+            return;
+        }
 
-                // Initialize overall statistics
-                this.overall = Statistic.create(data.overall);
-                this.searchKeys = {};
+        // Read using the stored key, write using the canonical one, so keys
+        // persisted before normalization existed are still recovered.
+        Object.keys(data.searchKeys).forEach((storedKey) => {
+            const searchKey = canonicalizeSearchKey(storedKey);
 
-                // Initialize statistics for each search key
-                Object.keys(data.searchKeys).forEach((searchKey) => {
-                    searchKey = canonicalizeSearchKey(searchKey);
+            this.searchKeys[searchKey] = Statistic.create(
+                data.searchKeys[storedKey]
+            );
+        });
+    },
 
-                    const stat = Statistic.create(data.searchKeys[searchKey]);
-                    selection.searchKeys[searchKey] = stat;
-                });
+    /**
+     * Record a selection, both overall and against the search term used.
+     *
+     * @param {string} [searchText] - The search text active at selection time.
+     */
+    increment(searchText) {
+        this.overall.increment();
 
-                return;
-            }
+        const searchKey = canonicalizeSearchKey(searchText);
 
-            // Initialize empty statistics if no data provided
-            this.overall = Statistic.create();
-            this.searchKeys = {};
-        },
+        if (!searchKey) {
+            return;
+        }
 
-        /**
-         * Increment the selection count for a search term
-         * @param {string} [searchText] - The search text to increment, if any
-         */
-        increment(searchText) {
-            // Always increment overall statistics
-            this.overall.increment();
+        if (!this.searchKeys[searchKey]) {
+            this.searchKeys[searchKey] = Statistic.create();
+        }
 
-            if (!searchText) {
-                return;
-            }
+        this.searchKeys[searchKey].increment();
+    },
 
-            // Normalize and increment search-specific statistics
-            searchText = canonicalizeSearchKey(searchText);
+    /**
+     * Score this selection for a given search term. Terms with no history of
+     * their own fall back to half the overall score, so a broadly popular
+     * item still ranks without dominating a specific query.
+     *
+     * @param {string} [searchText] - The search text being scored against.
+     * @returns {number} The calculated score.
+     */
+    score(searchText) {
+        const searchKey = canonicalizeSearchKey(searchText);
 
-            if (!this.searchKeys[searchText]) {
-                this.searchKeys[searchText] = Statistic.create();
-            }
-            this.searchKeys[searchText].increment();
-        },
+        if (!searchKey || !this.searchKeys[searchKey]) {
+            return this.overall.score() * 0.5;
+        }
 
-        /**
-         * Calculate the score for a search term
-         * @param {string} [searchText] - The search text to score
-         * @returns {number} The calculated score for the search term
-         */
-        score(searchText) {
-            searchText = canonicalizeSearchKey(searchText);
+        return this.searchKeys[searchKey].score();
+    },
+};
 
-            // If no search text or no statistics for this search, return half of overall score
-            if (!searchText || !this.searchKeys[searchText]) {
-                return this.overall.score() * 0.5;
-            }
-
-            // Return the specific score for this search term
-            return this.searchKeys[searchText].score();
-        },
-    };
-});
+export default Selection;

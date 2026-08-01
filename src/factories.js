@@ -1,35 +1,43 @@
 /**
- * Factories Module
- * Provides a factory for creating and caching tracker instances by name.
- * Ensures that only one instance per tracker name exists (singleton per name).
+ * Factories
+ *
+ * Provides one shared tracker instance per tracker name, so that separate
+ * quick switcher instances pointed at the same name share selection history.
  */
-define('factories', ['tracker'], (Tracker) => {
-    // Cache for loaded tracker instances
-    const loadedTrackers = {};
 
-    return {
-        /**
-         * Get or create a tracker instance by name.
-         * If the tracker already exists in the cache, return it.
-         * Otherwise, create a new tracker, initialize it, cache it, and return it.
-         *
-         * @param {string} trackerName - The name of the tracker to retrieve or create
-         * @returns {Object} The tracker instance
-         */
-        tracker(trackerName) {
-            // Return cached tracker if it exists
-            if (typeof loadedTrackers[trackerName] !== 'undefined') {
-                return loadedTrackers[trackerName];
-            }
+import Tracker from './tracker.js';
 
-            // Create and initialize a new tracker instance
-            const trackerInstance = Object.create(Tracker);
-            trackerInstance.init(trackerName);
+/** Cache of tracker instances, keyed by tracker name. */
+const loadedTrackers = {};
 
-            // Cache the new tracker instance
-            loadedTrackers[trackerName] = trackerInstance;
-
+export const factories = {
+    /**
+     * Get the tracker for a name, creating it on first use.
+     *
+     * @param {string} trackerName - The tracker name.
+     * @returns {Object} The shared tracker instance for that name.
+     */
+    tracker(trackerName) {
+        if (loadedTrackers[trackerName]) {
             return loadedTrackers[trackerName];
-        },
-    };
-});
+        }
+
+        const trackerInstance = Object.create(Tracker);
+        trackerInstance.init(trackerName);
+
+        loadedTrackers[trackerName] = trackerInstance;
+
+        return trackerInstance;
+    },
+
+    /**
+     * Drop every cached tracker. Primarily useful in tests.
+     */
+    clear() {
+        Object.keys(loadedTrackers).forEach((key) => {
+            delete loadedTrackers[key];
+        });
+    },
+};
+
+export default factories;

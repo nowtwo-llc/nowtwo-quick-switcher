@@ -1,131 +1,112 @@
 /**
- * Statistic Module
- * Tracks and manages usage statistics with time-based scoring.
- * Implements a scoring system based on frequency and recency of usage,
- * inspired by Slack's quick switcher algorithm.
+ * Statistic
+ *
+ * Tracks usage of a single item with time-based scoring. Implements the
+ * frequency/recency weighting described by Slack's quick switcher write-up:
+ * https://slack.engineering/a-faster-smarter-quick-switcher-77cbc193cb60
  */
-define('tracker/statistic', function() {
+
+/** Maximum number of timestamps retained per statistic. */
+const MAX_TIMESTAMPS = 10;
+
+/**
+ * Time windows, most recent first, paired with the points they award.
+ * Durations are in seconds.
+ */
+const SCORE_WINDOWS = [
+    {duration: 3600 * 4, points: 100},
+    {duration: 3600 * 24, points: 80},
+    {duration: 3600 * 24 * 3, points: 60},
+    {duration: 3600 * 24 * 7, points: 40},
+    {duration: 3600 * 24 * 30, points: 20},
+    {duration: 3600 * 24 * 90, points: 10},
+];
+
+/**
+ * Current unix timestamp in seconds.
+ *
+ * @returns {number} Seconds since the epoch.
+ */
+const time = () => Math.floor(Date.now() / 1000);
+
+export const Statistic = {
     /**
-     * Get current Unix timestamp in seconds
-     * @returns {number} Current timestamp in seconds
+     * Create a new Statistic instance.
+     *
+     * @param {Object} [data] - Previously persisted data to rehydrate from.
+     * @param {number[]} [data.timestamps] - Previous selection timestamps.
+     * @param {number} [data.count] - Total number of selections.
+     * @returns {Object} A new Statistic instance.
      */
-    const time = () => {
-        return Math.floor(new Date().getTime() / 1000);
-    };
+    create(data) {
+        const stat = Object.create(Statistic);
+        stat.init(data);
+
+        return stat;
+    },
 
     /**
-     * Statistic object for tracking usage patterns
-     * Maintains a list of timestamps and count of occurrences
+     * Initialize the statistic, tolerating partial or malformed stored data.
+     *
+     * @param {Object} [data] - Previously persisted data to rehydrate from.
      */
-    const Statistic = {
-        /**
-         * Create a new Statistic instance
-         * @param {Object} [data] - Optional data to initialize the statistic
-         * @param {Array} [data.timestamps] - Array of previous timestamps
-         * @param {number} [data.count] - Previous count
-         * @returns {Object} New Statistic instance
-         */
-        create(data) {
-            const stat = Object.create(Statistic);
-            stat.init(data);
+    init(data) {
+        this.timestamps = [];
+        this.count = 0;
 
-            return stat;
-        },
+        if (!data) {
+            return;
+        }
 
-        /**
-         * Initialize the statistic with optional data
-         * @param {Object} [data] - Optional data to initialize with
-         */
-        init(data) {
-            if (data) {
-                this.timestamps = data.timestamps;
-                this.count = data.count;
-                return;
-            }
+        if (Array.isArray(data.timestamps)) {
+            this.timestamps = data.timestamps.filter(
+                (timestamp) => typeof timestamp === 'number'
+                    && Number.isFinite(timestamp)
+            );
+        }
 
-            this.timestamps = [];
-            this.count = 0;
-        },
+        if (typeof data.count === 'number' && Number.isFinite(data.count)) {
+            this.count = data.count;
+        }
+    },
 
-        /**
-         * Increment the statistic count and add current timestamp
-         * Maintains a maximum of 10 timestamps by removing oldest entries
-         */
-        increment() {
-            this.timestamps.push(time());
-            ++this.count;
+    /**
+     * Record a selection, retaining only the most recent timestamps.
+     */
+    increment() {
+        this.timestamps.push(time());
+        ++this.count;
 
-            // Keep only the 10 most recent timestamps
-            while (this.timestamps.length > 10) {
-                this.timestamps.shift();
-            }
-        },
+        while (this.timestamps.length > MAX_TIMESTAMPS) {
+            this.timestamps.shift();
+        }
+    },
 
-        /**
-         * Calculate the score based on frequency and recency
-         * Uses a weighted scoring system based on time windows:
-         * - Last 4 hours: 100 points
-         * - Last 24 hours: 80 points
-         * - Last 3 days: 60 points
-         * - Last week: 40 points
-         * - Last month: 20 points
-         * - Last 3 months: 10 points
-         * 
-         * @returns {number} Calculated score
-         */
-        score() {
-            if (!this.timestamps.length) {
-                return 0;
-            }
+    /**
+     * Score this statistic by frequency and recency. The average points per
+     * retained timestamp are multiplied by the lifetime selection count, so
+     * an item selected often and recently outranks one selected often but
+     * long ago.
+     *
+     * @returns {number} The calculated score, or 0 when never selected.
+     */
+    score() {
+        if (!this.timestamps.length) {
+            return 0;
+        }
 
-            const now = time();
+        const now = time();
 
-            /**
-             * Scoring based on weights and calculation used by Slack as
-             * described in their article:
-             * https://slack.engineering/a-faster-smarter-quick-switcher-77cbc193cb60#.cb5ofyxyl
-             */
-            const score = this.timestamps.reduce(
-                (score, timestamp) => {
-                    // Last 4 hours: highest weight
-                    if (timestamp > now - (3600 * 4)) {
-                        return score + 100;
-                    }
-
-                    // Last 24 hours: high weight
-                    if (timestamp > now - (3600 * 24)) {
-                        return score + 80;
-                    }
-
-                    // Last 3 days: medium-high weight
-                    if (timestamp > now - (3600 * 24 * 3)) {
-                        return score + 60;
-                    }
-
-                    // Last week: medium weight
-                    if (timestamp > now - (3600 * 24 * 7)) {
-                        return score + 40;
-                    }
-
-                    // Last month: medium-low weight
-                    if (timestamp > now - (3600 * 24 * 30)) {
-                        return score + 20;
-                    }
-
-                    // Last 3 months: low weight
-                    if (timestamp > now - (3600 * 24 * 90)) {
-                        return score + 10;
-                    }
-
-                    return score;
-                },
-                0
+        const score = this.timestamps.reduce((total, timestamp) => {
+            const window = SCORE_WINDOWS.find(
+                (candidate) => timestamp > now - candidate.duration
             );
 
-            // Final score is the average score per timestamp multiplied by total count
-            return this.count * score / this.timestamps.length;
-        },
-    };
+            return total + (window ? window.points : 0);
+        }, 0);
 
-    return Statistic;
-});
+        return this.count * score / this.timestamps.length;
+    },
+};
+
+export default Statistic;

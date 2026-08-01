@@ -1,599 +1,769 @@
 /**
- * Quick Switcher Module
- * A keyboard-driven interface for quickly switching between different views or actions
- * in the application. Similar to VS Code's command palette or Sublime Text's Goto Anything.
+ * Quick Switcher
+ *
+ * A keyboard-driven command palette: search, drill down into nested searches
+ * with breadcrumbs, and rank results by how the user has picked them before.
  */
 
-const quickSwitcher = (filters, SelectedResult, sorters, html) => {
+import filters from './filters.js';
+import SelectedResult from './selected-result.js';
+import sorters from './sorters.js';
+import createTemplate from './template.js';
+
+/**
+ * Shared prototype for the object handed to each search callback.
+ */
+const ResultHandler = {
+    filters,
+    sorters,
+};
+
+/**
+ * Counter used to namespace element IDs so multiple instances can coexist.
+ */
+let instanceCount = 0;
+
+/**
+ * Resolve a value that may be supplied either directly or as a factory.
+ *
+ * @param {*} value - Either a function to call or a plain value.
+ * @returns {*} The resolved value.
+ */
+const callbackOrValue = (value) => {
+    return typeof value === 'function' ? value() : value;
+};
+
+/**
+ * Detect macOS (and iOS) so the hotkey uses Cmd rather than Ctrl.
+ * navigator.platform is deprecated, so prefer userAgentData where present.
+ *
+ * @returns {boolean} True on Apple platforms.
+ */
+const isApplePlatform = () => {
+    if (typeof navigator === 'undefined') {
+        return false;
+    }
+
+    const uaData = navigator.userAgentData;
+
+    if (uaData && typeof uaData.platform === 'string' && uaData.platform) {
+        return uaData.platform.toLowerCase().includes('mac');
+    }
+
+    return /mac|iphone|ipad|ipod/i.test(
+        navigator.userAgent || navigator.platform || ''
+    );
+};
+
+const QuickSwitcher = {
     /**
-     * Result Handler
-     * Manages the filtering and sorting of search results
+     * Initialize the switcher and attach it to the DOM.
+     *
+     * @param {HTMLElement} parentDom - Element to append the switcher to.
+     * @param {Object} options - Configuration options.
      */
-    const ResultHandler = {
-        filters: filters,
-        sorters: sorters,
-    };
+    init(parentDom, options) {
+        this.isOpen = false;
+        this.destroyed = false;
+        this.parentDom = null;
+        this.valueObjects = [];
+        this.selectedIndex = null;
+        this.searchText = '';
+        this.searchDelayTimeout = null;
+        this.searchId = 0;
+        this.callbackStack = [];
+        this.abortSearchCallback = null;
+        this.idPrefix = `lstr-qswitcher-${++instanceCount}`;
+
+        // Every listener registers against this signal so destroy() can
+        // detach all of them at once, including the document-level ones.
+        this.listenerController = new AbortController();
+
+        this.modifierKey = isApplePlatform() ? 'metaKey' : 'ctrlKey';
+
+        options = Object.assign({
+            searchCallback: () => {},
+            selectCallback: () => {},
+            selectChildSearchCallback: () => {},
+            searchDelay: 1000,
+            hotKey: 'K',
+        }, options);
+
+        this.hotKey = options.hotKey
+            ? String(options.hotKey).toUpperCase()
+            : null;
+
+        this.rootOptions = {
+            searchCallback: options.searchCallback,
+            selectCallback: options.selectCallback,
+            selectChildSearchCallback: options.selectChildSearchCallback,
+            searchDelay: options.searchDelay,
+            trackChildrenAs: options.trackChildrenAs,
+        };
+
+        this.setOptions(this.rootOptions);
+        this.initDomElement(parentDom);
+    },
 
     /**
-     * Helper function to handle both function and value callbacks
-     * @param {*} value - Either a function or a direct value
-     * @returns {*} The result of the function call or the value itself
+     * Build the switcher's DOM and wire up its event listeners.
+     *
+     * @param {HTMLElement} parentDom - Element to append the switcher to.
      */
-    const callbackOrValue = (value) => (typeof value === 'function') ? value() : value;
+    initDomElement(parentDom) {
+        const signal = this.listenerController.signal;
 
-    /**
-     * Main QuickSwitcher object that handles all the functionality
-     */
-    const QuickSwitcher = {
-        /**
-         * Initialize the QuickSwitcher
-         * @param {HTMLElement} parentDom - The parent DOM element to attach to
-         * @param {Object} options - Configuration options
-         */
-        init(parentDom, options) {
-            // Initialize state variables
-            this.isOpen = false;
-            this.parentDom = null;
-            this.liCollection = null;
-            this.valueObjects = null;
-            this.selectedIndex = null;
-            this.results = null;
-            this.noSearchTerms = null;
-            this.noResults = null;
-            this.loading = null;
-            this.breadcrumb = null;
-            this.search = null;
-            this.searchText = '';
-            this.searchDelayTimeout = null;
-            this.searchId = 0;
+        this.parentDom = parentDom;
+        this.domElement = document.createElement('div');
+        this.domElement.className = 'lstr-qswitcher';
+        this.domElement.innerHTML = createTemplate(this.idPrefix);
+        parentDom.appendChild(this.domElement);
 
-            // Set modifier key based on platform (Ctrl for Windows/Linux, Cmd for Mac)
-            this.modifierKey = 'ctrlKey';
-            if (navigator.platform.toLowerCase().includes('mac')) {
-                this.modifierKey = 'metaKey';
-            }
+        // Scope every lookup to this instance's element. Querying from the
+        // parent would find the first instance's nodes on a page with more
+        // than one switcher.
+        const find = (selector) => this.domElement.querySelector(selector);
 
-            // Set default options and merge with provided options
-            options = Object.assign({
-                searchCallback: () => {},
-                selectCallback: () => {},
-                selectChildSearchCallback: () => {},
-                searchDelay: 1000,
-                hotKey: 'K',
-            }, options);
+        this.overlay = find('.lstr-qswitcher-overlay');
+        this.container = find('.lstr-qswitcher-container');
+        this.breadcrumb = find('.lstr-qswitcher-breadcrumb');
+        this.closeButton = find('.lstr-qswitcher-close');
+        this.search = find('.lstr-qswitcher-search');
+        this.loading = find('.lstr-qswitcher-loading');
+        this.results = find('.lstr-qswitcher-results');
+        this.noSearchTerms = find('.lstr-qswitcher-no-terms');
+        this.noResults = find('.lstr-qswitcher-no-results');
+        this.oopsResults = find('.lstr-qswitcher-oops-results');
 
-            // Set hotkey if provided
-            if (options.hotKey) {
-                this.hotKey = options.hotKey.toUpperCase();
-            }
+        find('.lstr-qswitcher-popup').addEventListener('submit', (ev) => {
+            ev.preventDefault();
+        }, {signal});
 
-            // Initialize options
-            this.setOptions({
-                searchCallback: options.searchCallback,
-                selectCallback: options.selectCallback,
-                selectChildSearchCallback: options.selectChildSearchCallback,
-                searchDelay: options.searchDelay,
-                trackChildrenAs: options.trackChildrenAs,
-            });
+        this.overlay.addEventListener('click', (ev) => {
+            this.closeSwitcher();
+            ev.preventDefault();
+        }, {signal});
 
-            // Initialize DOM elements
-            this.initDomElement(parentDom);
-
-            // Initialize callback stack and abort search callback
-            this.callbackStack = [];
-            this.abortSearchCallback = null;
-        },
-
-        /**
-         * Initialize DOM elements and set up event listeners
-         * @param {HTMLElement} parentDom - The parent DOM element
-         */
-        initDomElement(parentDom) {
-            const qSwitcher = this;
-
-            // Store parent DOM and create main element
-            this.parentDom = parentDom;
-            this.domElement = document.createElement('div');
-            this.domElement.innerHTML = html;
-            parentDom.appendChild(this.domElement);
-
-            // Cache DOM elements
-            this.breadcrumb = this.domElement.querySelector('.lstr-qswitcher-breadcrumb');
-            this.close = this.domElement.querySelector('.lstr-qswitcher-close');
-            this.search = this.domElement.querySelector('.lstr-qswitcher-search');
-            this.loading = this.domElement.querySelector('.lstr-qswitcher-loading');
-            this.results = this.domElement.querySelector('.lstr-qswitcher-results');
-            this.noSearchTerms = this.domElement.querySelector('.lstr-qswitcher-no-terms');
-            this.noResults = this.domElement.querySelector('.lstr-qswitcher-no-results');
-            this.oopsResults = this.domElement.querySelector('.lstr-qswitcher-oops-results');
-
-            const domElement = this.domElement;
-
-            // Prevent form submission
-            domElement.querySelector('.lstr-qswitcher-popup').addEventListener('submit', (ev) => {
-                ev.preventDefault();
-            });
-
-            // Close on overlay click
-            parentDom.querySelector('.lstr-qswitcher-overlay').addEventListener('click', (ev) => {
-                qSwitcher.closeSwitcher();
-                ev.preventDefault();
-            });
-
-            // Handle keyboard shortcuts
-            parentDom.addEventListener('keydown', (ev) => {
-                if (ev[qSwitcher.modifierKey] && ev.key.toUpperCase() === qSwitcher.hotKey) {
-                    qSwitcher.toggleSwitcher();
-                    ev.preventDefault();
-                }
-            });
-
-            // Handle navigation keys when switcher is open
-            document.documentElement.addEventListener('keydown', (ev) => {
-                if (!qSwitcher.isOpen) {
+        if (this.hotKey) {
+            document.addEventListener('keydown', (ev) => {
+                if (!ev.key) {
                     return;
                 }
 
-                if (ev.key === 'ArrowUp') {
-                    qSwitcher.adjustSelectedIndex(-1);
-                    ev.preventDefault();
-                } else if (ev.key === 'ArrowDown') {
-                    qSwitcher.adjustSelectedIndex(1);
-                    ev.preventDefault();
-                } else if (ev.key === 'Escape') {
-                    qSwitcher.closeSwitcher();
-                    ev.preventDefault();
-                } else if (ev.key === 'Enter') {
-                    qSwitcher.triggerSelect(qSwitcher.selectedIndex, ev);
+                if (ev[this.modifierKey] && ev.key.toUpperCase() === this.hotKey) {
+                    this.toggleSwitcher();
                     ev.preventDefault();
                 }
-            });
+            }, {signal});
+        }
 
-            // Close button handler
-            this.close.addEventListener('click', () => {
-                qSwitcher.closeSwitcher();
-            });
-
-            // Search input handler
-            this.search.addEventListener('keyup', (ev) => {
-                const searchText = qSwitcher.search.value;
-                if (qSwitcher.searchDelayTimeout) {
-                    clearTimeout(qSwitcher.searchDelayTimeout);
-                    qSwitcher.searchDelayTimeout = null;
-                }
-
-                if (searchText !== qSwitcher.searchText) {
-                    qSwitcher.searchDelayTimeout = setTimeout(() => {
-                        qSwitcher.selectIndex(null);
-                        qSwitcher.searchText = searchText;
-                        qSwitcher.renderList();
-                    }, qSwitcher.searchDelay);
-                } else if (ev.key === 'Backspace' && '' === searchText) {
-                    // Handle backspace with empty search
-                    qSwitcher.popCallback();
-                    qSwitcher.renderList();
-                }
-            });
-
-            // Mouse over handler for results
-            domElement.addEventListener('mouseover', (ev) => {
-                const li = ev.target.closest('.lstr-qswitcher-results li');
-                if (li) {
-                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
-                    if (dataset) {
-                        qSwitcher.selectIndex(dataset.index);
-                    }
-                }
-            });
-
-            // Touch handler for results
-            domElement.addEventListener('touchstart', (ev) => {
-                const li = ev.target.closest('.lstr-qswitcher-results li');
-                if (li) {
-                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
-                    if (dataset) {
-                        qSwitcher.selectIndex(dataset.index);
-                        qSwitcher.search.blur();
-                    }
-                }
-            });
-
-            // Click handler for results
-            domElement.addEventListener('click', (ev) => {
-                const li = ev.target.closest('.lstr-qswitcher-results li');
-                if (li) {
-                    const dataset = JSON.parse(li.getAttribute('data-lstr-qswitcher'));
-                    if (dataset) {
-                        qSwitcher.triggerSelect(dataset.index, ev);
-                    }
-                }
-            });
-        },
-
-        /**
-         * Render the search results list
-         */
-        renderList() {
-            // Abort any existing search
-            if (this.abortSearchCallback) {
-                this.abortSearchCallback();
-                this.abortSearchCallback = null;
+        document.addEventListener('keydown', (ev) => {
+            if (!this.isOpen || !ev.key) {
+                return;
             }
 
-            this.renderBreadcrumb();
-            this.usePane(this.loading);
+            if (ev.key === 'ArrowUp') {
+                this.adjustSelectedIndex(-1);
+                ev.preventDefault();
+            } else if (ev.key === 'ArrowDown') {
+                this.adjustSelectedIndex(1);
+                ev.preventDefault();
+            } else if (ev.key === 'Escape') {
+                this.closeSwitcher();
+                ev.preventDefault();
+            } else if (ev.key === 'Enter') {
+                this.triggerSelect(this.selectedIndex, ev);
+                ev.preventDefault();
+            }
+        }, {signal});
 
-            // Create result handler and initiate search
-            const resultHandler = Object.create(ResultHandler);
-            ++this.searchId;
-            resultHandler.setResults = this.setResults.bind(this, this.searchId);
-            resultHandler.setError = this.setError.bind(this, this.searchId);
+        this.closeButton.addEventListener('click', () => {
+            this.closeSwitcher();
+        }, {signal});
+
+        this.search.addEventListener('keyup', (ev) => {
+            const searchText = this.search.value;
+
+            if (this.searchDelayTimeout) {
+                clearTimeout(this.searchDelayTimeout);
+                this.searchDelayTimeout = null;
+            }
+
+            if (searchText !== this.searchText) {
+                this.searchDelayTimeout = setTimeout(() => {
+                    this.searchDelayTimeout = null;
+                    this.selectIndex(null);
+                    this.searchText = searchText;
+                    this.renderList();
+                }, this.searchDelay);
+            } else if (ev.key === 'Backspace' && searchText === '') {
+                // Backspace on an empty box steps back out of a nested search.
+                if (this.popCallback()) {
+                    this.renderList();
+                }
+            }
+        }, {signal});
+
+        const indexFromEvent = (ev) => {
+            const li = ev.target.closest
+                ? ev.target.closest('.lstr-qswitcher-results li')
+                : null;
+
+            if (!li || li.dataset.lstrQswitcherIndex === undefined) {
+                return null;
+            }
+
+            const index = parseInt(li.dataset.lstrQswitcherIndex, 10);
+
+            return Number.isNaN(index) ? null : index;
+        };
+
+        this.domElement.addEventListener('mouseover', (ev) => {
+            const index = indexFromEvent(ev);
+
+            if (index !== null) {
+                this.selectIndex(index);
+            }
+        }, {signal});
+
+        this.domElement.addEventListener('touchstart', (ev) => {
+            const index = indexFromEvent(ev);
+
+            if (index !== null) {
+                this.selectIndex(index);
+                this.search.blur();
+            }
+        }, {signal, passive: true});
+
+        this.domElement.addEventListener('click', (ev) => {
+            const index = indexFromEvent(ev);
+
+            if (index !== null) {
+                this.triggerSelect(index, ev);
+            }
+        }, {signal});
+    },
+
+    /**
+     * Run the active search callback and render whatever it produces.
+     */
+    renderList() {
+        if (this.abortSearchCallback) {
+            this.abortSearchCallback();
+            this.abortSearchCallback = null;
+        }
+
+        this.renderBreadcrumb();
+        this.usePane(this.loading);
+
+        const resultHandler = Object.create(ResultHandler);
+        ++this.searchId;
+        resultHandler.setResults = this.setResults.bind(this, this.searchId);
+        resultHandler.setError = this.setError.bind(this, this.searchId);
+
+        try {
             this.abortSearchCallback = this.searchCallback(
                 this.searchText,
                 resultHandler
             );
-        },
+        } catch (error) {
+            // A throwing search callback should surface the error pane rather
+            // than leaving the switcher stuck on "Loading...".
+            this.setError(this.searchId, error);
+        }
+    },
 
-        /**
-         * Set the search results
-         * @param {number} searchId - The ID of the current search
-         * @param {Array} items - The search results
-         */
-        setResults(searchId, items) {
-            if (searchId !== this.searchId) {
-                return;
-            }
+    /**
+     * Render a set of results.
+     *
+     * @param {number} searchId - Search generation, to drop stale responses.
+     * @param {Array} items - The results to render.
+     */
+    setResults(searchId, items) {
+        if (searchId !== this.searchId || this.destroyed) {
+            return;
+        }
 
-            const qSwitcher = this;
-            qSwitcher.valueObjects = [];
+        this.valueObjects = [];
 
-            // Handle empty results
-            if (items.length === 0) {
-                this.results.innerHTML = '';
-                this.usePane(this.searchText ? this.noResults : this.noSearchTerms);
-                return;
-            }
-
-            // Create results list
-            const ul = document.createElement('ul');
-
-            // Sort items if tracking is enabled
-            if (this.options.trackChildrenAs) {
-                const tracker = sorters.tracker(this.options.trackChildrenAs);
-                items = tracker.sort(items, this.searchText);
-            }
-
-            // Create list items for each result
-            items.forEach((value, index) => {
-                const li = document.createElement('li');
-                const container = document.createElement('div');
-                ul.appendChild(li);
-                li.appendChild(container);
-                qSwitcher.setListText(container, value);
-
-                // Add description if available
-                if (value.description) {
-                    const description = document.createElement('span');
-                    description.className = 'lstr-qswitcher-result-description';
-                    qSwitcher.setListText(description, value.description);
-                    li.insertBefore(description, li.firstChild);
-                }
-
-                // Set data attributes and classes
-                li.dataset.lstrQswitcher = JSON.stringify({'index': index});
-                container.classList.add('lstr-qswitcher-result-container');
-
-                if (value.searchCallback) {
-                    li.classList.add('lstr-qswitcher-result-category');
-                }
-
-                // Store value object
-                qSwitcher.valueObjects[index] = {
-                    'index': index,
-                    'value': value,
-                    'li': li,
-                };
-            });
-
-            // Update DOM
+        if (!items || items.length === 0) {
             this.results.innerHTML = '';
-            this.results.appendChild(ul);
-            this.usePane(this.results);
+            this.setActiveDescendant(null);
+            this.usePane(this.searchText ? this.noResults : this.noSearchTerms);
+            return;
+        }
 
-            // Select first item and scroll
-            qSwitcher.selectIndex(0);
-            qSwitcher.scrollToSelectedItem();
-            if (window.requestAnimationFrame) {
-                window.requestAnimationFrame(() => {
-                    qSwitcher.scrollToSelectedItem();
-                });
-            }
-        },
+        if (this.options.trackChildrenAs) {
+            items = sorters
+                .tracker(this.options.trackChildrenAs)
+                .sort(items, this.searchText);
+        }
 
-        /**
-         * Handle search errors
-         * @param {number} searchId - The ID of the current search
-         */
-        setError(searchId) {
-            if (searchId !== this.searchId) {
-                return;
-            }
-            this.usePane(this.oopsResults);
-        },
+        const ul = document.createElement('ul');
 
-        /**
-         * Render the breadcrumb navigation
-         */
-        renderBreadcrumb() {
-            if (this.callbackStack.length === 0) {
-                this.domElement.classList.remove('lstr-qswitcher-subsearch');
-                this.breadcrumb.innerHTML = '';
-                return;
+        items.forEach((value, index) => {
+            const li = document.createElement('li');
+            const container = document.createElement('div');
+
+            ul.appendChild(li);
+            li.appendChild(container);
+            this.setListText(container, value);
+
+            if (value && value.description) {
+                const description = document.createElement('span');
+                description.className = 'lstr-qswitcher-result-description';
+                this.setListText(description, value.description);
+                li.insertBefore(description, li.firstChild);
             }
 
-            const ul = document.createElement('ul');
+            li.dataset.lstrQswitcherIndex = String(index);
+            li.id = `${this.idPrefix}-option-${index}`;
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', 'false');
+            container.classList.add('lstr-qswitcher-result-container');
 
-            this.callbackStack.forEach((value, index) => {
-                const li = document.createElement('li');
-                li.textContent = value.text;
-                ul.appendChild(li);
+            if (value && value.searchCallback) {
+                li.classList.add('lstr-qswitcher-result-category');
+            }
+
+            this.valueObjects[index] = {index, value, li};
+        });
+
+        this.results.innerHTML = '';
+        this.results.appendChild(ul);
+        this.usePane(this.results);
+
+        this.selectIndex(0);
+        this.scrollToSelectedItem();
+
+        if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+            window.requestAnimationFrame(() => {
+                if (!this.destroyed) {
+                    this.scrollToSelectedItem();
+                }
             });
+        }
+    },
 
-            this.domElement.classList.add('lstr-qswitcher-subsearch');
+    /**
+     * Show the error pane for a failed search.
+     *
+     * @param {number} searchId - Search generation, to drop stale responses.
+     */
+    setError(searchId) {
+        if (searchId !== this.searchId || this.destroyed) {
+            return;
+        }
+
+        this.valueObjects = [];
+        this.setActiveDescendant(null);
+        this.usePane(this.oopsResults);
+    },
+
+    /**
+     * Render the breadcrumb trail for the nested search stack.
+     */
+    renderBreadcrumb() {
+        if (this.callbackStack.length === 0) {
+            this.domElement.classList.remove('lstr-qswitcher-subsearch');
             this.breadcrumb.innerHTML = '';
-            this.breadcrumb.appendChild(ul);
-        },
+            return;
+        }
 
-        /**
-         * Set the text content of a list element
-         * @param {HTMLElement} element - The element to set text for
-         * @param {*} value - The value to set
-         */
-        setListText(element, value) {
-            if (value.html) {
+        const ul = document.createElement('ul');
+
+        this.callbackStack.forEach((entry) => {
+            const li = document.createElement('li');
+            li.textContent = entry.text;
+            ul.appendChild(li);
+        });
+
+        this.domElement.classList.add('lstr-qswitcher-subsearch');
+        this.breadcrumb.innerHTML = '';
+        this.breadcrumb.appendChild(ul);
+    },
+
+    /**
+     * Write a result's label into an element.
+     *
+     * `html` is rendered as markup; everything else -- including `text` -- is
+     * rendered as plain text, so untrusted result data cannot inject markup.
+     *
+     * @param {HTMLElement} element - The element to fill.
+     * @param {*} value - A string, or an object with `html` or `text`.
+     */
+    setListText(element, value) {
+        if (value && typeof value === 'object') {
+            if (value.html !== undefined) {
                 element.innerHTML = callbackOrValue(value.html);
                 return;
             }
 
-            if (value.text) {
-                element.innerHTML = callbackOrValue(value.text);
+            if (value.text !== undefined) {
+                element.textContent = callbackOrValue(value.text);
                 return;
             }
+        }
 
-            element.textContent = value;
-        },
-
-        /**
-         * Select an item by index
-         * @param {number} selectedIndex - The index to select
-         */
-        selectIndex(selectedIndex) {
-            if (this.selectedIndex !== null
-                && this.valueObjects[this.selectedIndex]
-            ) {
-                this.valueObjects[this.selectedIndex]
-                    .li.classList.remove('lstr-qswitcher-result-selected');
-            }
-
-            if (null === selectedIndex || 0 === this.valueObjects.length) {
-                this.selectedIndex = null;
-                return;
-            }
-
-            this.selectedIndex = selectedIndex % this.valueObjects.length;
-
-            if (this.selectedIndex < 0) {
-                this.selectedIndex = this.valueObjects.length - 1;
-            }
-
-            this.valueObjects[this.selectedIndex]
-                .li.classList.add('lstr-qswitcher-result-selected');
-        },
-
-        /**
-         * Scroll to the selected item
-         */
-        scrollToSelectedItem() {
-            const results = this.results;
-
-            if (this.selectedIndex === null) {
-                results.scrollTop = 0;
-                return;
-            }
-
-            const li = this.valueObjects[this.selectedIndex].li;
-
-            const topOfLi = li.offsetTop - li.parentElement.offsetTop;
-            const bottomOfLi = topOfLi + li.offsetHeight;
-            const scrollTop = results.scrollTop;
-            const scrollBottom = scrollTop + results.offsetHeight;
-
-            if (bottomOfLi > scrollBottom || topOfLi < scrollTop) {
-                results.scrollTop = topOfLi;
-            }
-        },
-
-        /**
-         * Adjust the selected index
-         * @param {number} adjustment - The amount to adjust by
-         */
-        adjustSelectedIndex(adjustment) {
-            this.selectIndex(this.selectedIndex + adjustment);
-            this.scrollToSelectedItem();
-        },
-
-        /**
-         * Toggle the switcher open/closed
-         */
-        toggleSwitcher() {
-            if (this.isOpen) {
-                this.closeSwitcher();
-                return;
-            }
-            return this.openSwitcher();
-        },
-
-        /**
-         * Open the switcher
-         */
-        openSwitcher() {
-            this.useRootCallback();
-            this.search.value = '';
-            this.searchText = '';
-            this.renderList();
-
-            this.parentDom.classList.toggle('lstr-qswitcher-noscroll');
-            this.domElement.querySelector('.lstr-qswitcher-overlay').style.display = 'block';
-            this.domElement.querySelector('.lstr-qswitcher-container').style.display = 'block';
-
-            this.isOpen = true;
-            this.search.focus();
-        },
-
-        /**
-         * Close the switcher
-         */
-        closeSwitcher() {
-            this.parentDom.classList.remove('lstr-qswitcher-noscroll');
-            this.domElement.querySelector('.lstr-qswitcher-overlay').style.display = 'none';
-            this.domElement.querySelector('.lstr-qswitcher-container').style.display = 'none';
-
-            this.isOpen = false;
-        },
-
-        /**
-         * Handle selection of an item
-         * @param {number} index - The index of the selected item
-         * @param {Event} event - The triggering event
-         */
-        triggerSelect(index, event) {
-            if (null === index) {
-                return;
-            }
-
-            const selectedValue = this.valueObjects[index].value;
-            const selectedResult = Object.create(SelectedResult);
-            selectedResult.init(selectedValue, this.searchText, this.options, event);
-
-            if (selectedValue.searchCallback) {
-                const isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
-                selectedResult.track();
-                if (false === isSelectionAllowed) {
-                    return;
-                }
-
-                this.callbackStack.push({
-                    'text': selectedValue.breadcrumbText,
-                    'parent': this.options,
-                });
-
-                this.options = selectedValue;
-                this.searchCallback = selectedValue.searchCallback;
-                if (selectedValue.searchDelay) {
-                    this.searchDelay = selectedValue.searchDelay;
-                }
-                if (selectedValue.selectCallback) {
-                    this.selectCallback = selectedValue.selectCallback;
-                }
-                if (selectedValue.selectChildSearchCallback) {
-                    this.selectChildSearchCallback
-                        = selectedValue.selectChildSearchCallback;
-                }
-
-                if (!selectedResult.isSearchTextClearingPrevented()) {
-                    this.search.value = '';
-                    this.searchText = '';
-                }
-
-                this.valueObjects = [];
-                this.selectIndex(null);
-                this.search.focus();
-                this.renderList();
-
-                return;
-            }
-
-            const isCloseAllowed = this.selectCallback(selectedResult);
-            selectedResult.track();
-            if (false !== isCloseAllowed) {
-                this.closeSwitcher();
-            }
-        },
-
-        /**
-         * Pop the last callback from the stack
-         * @returns {boolean} Whether a callback was popped
-         */
-        popCallback() {
-            const callbacks = this.callbackStack.pop();
-            if (!callbacks) {
-                return false;
-            }
-
-            this.setOptions(callbacks.parent);
-
-            return true;
-        },
-
-        /**
-         * Reset to root callback
-         */
-        useRootCallback() {
-            while (this.callbackStack.length > 0) {
-                this.popCallback();
-            }
-        },
-
-        /**
-         * Switch to a different pane
-         * @param {HTMLElement} paneToUse - The pane to show
-         */
-        usePane(paneToUse) {
-            this.results.style.display = 'none';
-            this.noSearchTerms.style.display = 'none';
-            this.noResults.style.display = 'none';
-            this.oopsResults.style.display = 'none';
-            this.loading.style.display = 'none';
-
-            paneToUse.style.display = 'block';
-        },
-
-        /**
-         * Set the options
-         * @param {Object} options - The options to set
-         */
-        setOptions(options) {
-            this.options = options;
-
-            this.searchCallback = options.searchCallback;
-            this.searchDelay = options.searchDelay;
-            this.selectCallback = options.selectCallback;
-            this.selectChildSearchCallback = options.selectChildSearchCallback;
-        },
-    };
+        element.textContent = value === null || value === undefined
+            ? ''
+            : String(value);
+    },
 
     /**
-     * Create and return a new QuickSwitcher instance
-     * @param {Object} options - Configuration options
-     * @returns {Object} The QuickSwitcher instance
+     * Point the search box's aria-activedescendant at the selected option.
+     *
+     * @param {HTMLElement|null} li - The selected element, or null.
      */
-    const lstrQuickSwitcher = (options) => {
-        const parentDom = document.body;
+    setActiveDescendant(li) {
+        if (li) {
+            this.search.setAttribute('aria-activedescendant', li.id);
+            return;
+        }
 
-        const quickSwitcher = Object.create(QuickSwitcher);
-        quickSwitcher.init(parentDom, options);
+        this.search.removeAttribute('aria-activedescendant');
+    },
 
-        return {
-            open: quickSwitcher.openSwitcher.bind(quickSwitcher),
-        };
-    };
+    /**
+     * Select a result by index, wrapping around at either end.
+     *
+     * @param {number|null} selectedIndex - Index to select, or null to clear.
+     */
+    selectIndex(selectedIndex) {
+        const previous = this.selectedIndex !== null
+            ? this.valueObjects[this.selectedIndex]
+            : null;
 
-    return lstrQuickSwitcher;
+        if (previous) {
+            previous.li.classList.remove('lstr-qswitcher-result-selected');
+            previous.li.setAttribute('aria-selected', 'false');
+        }
+
+        if (selectedIndex === null || this.valueObjects.length === 0) {
+            this.selectedIndex = null;
+            this.setActiveDescendant(null);
+            return;
+        }
+
+        this.selectedIndex = selectedIndex % this.valueObjects.length;
+
+        if (this.selectedIndex < 0) {
+            this.selectedIndex += this.valueObjects.length;
+        }
+
+        const current = this.valueObjects[this.selectedIndex];
+        current.li.classList.add('lstr-qswitcher-result-selected');
+        current.li.setAttribute('aria-selected', 'true');
+        this.setActiveDescendant(current.li);
+    },
+
+    /**
+     * Scroll the results pane so the selected item is visible.
+     */
+    scrollToSelectedItem() {
+        const results = this.results;
+
+        if (this.selectedIndex === null || !this.valueObjects[this.selectedIndex]) {
+            results.scrollTop = 0;
+            return;
+        }
+
+        const li = this.valueObjects[this.selectedIndex].li;
+
+        const topOfLi = li.offsetTop - li.parentElement.offsetTop;
+        const bottomOfLi = topOfLi + li.offsetHeight;
+        const scrollTop = results.scrollTop;
+        const scrollBottom = scrollTop + results.offsetHeight;
+
+        if (bottomOfLi > scrollBottom || topOfLi < scrollTop) {
+            results.scrollTop = topOfLi;
+        }
+    },
+
+    /**
+     * Move the selection by a relative amount.
+     *
+     * @param {number} adjustment - Positions to move; negative moves up.
+     */
+    adjustSelectedIndex(adjustment) {
+        if (this.selectedIndex === null) {
+            this.selectIndex(adjustment > 0 ? 0 : -1);
+        } else {
+            this.selectIndex(this.selectedIndex + adjustment);
+        }
+
+        this.scrollToSelectedItem();
+    },
+
+    /**
+     * Open the switcher if closed, close it if open.
+     */
+    toggleSwitcher() {
+        if (this.isOpen) {
+            this.closeSwitcher();
+            return;
+        }
+
+        this.openSwitcher();
+    },
+
+    /**
+     * Open the switcher, resetting to the root search.
+     */
+    openSwitcher() {
+        if (this.destroyed || this.isOpen) {
+            return;
+        }
+
+        this.useRootCallback();
+        this.search.value = '';
+        this.searchText = '';
+        this.renderList();
+
+        this.parentDom.classList.add('lstr-qswitcher-noscroll');
+        this.overlay.style.display = 'block';
+        this.container.style.display = 'block';
+        this.search.setAttribute('aria-expanded', 'true');
+
+        this.isOpen = true;
+        this.search.focus();
+    },
+
+    /**
+     * Close the switcher.
+     */
+    closeSwitcher() {
+        if (this.destroyed || !this.isOpen) {
+            return;
+        }
+
+        if (this.searchDelayTimeout) {
+            clearTimeout(this.searchDelayTimeout);
+            this.searchDelayTimeout = null;
+        }
+
+        this.parentDom.classList.remove('lstr-qswitcher-noscroll');
+        this.overlay.style.display = 'none';
+        this.container.style.display = 'none';
+        this.search.setAttribute('aria-expanded', 'false');
+
+        this.isOpen = false;
+    },
+
+    /**
+     * Act on a selected result: drill into a nested search, or select it.
+     *
+     * @param {number|null} index - Index of the result to act on.
+     * @param {Event} event - The DOM event that triggered the selection.
+     */
+    triggerSelect(index, event) {
+        if (index === null || !this.valueObjects[index]) {
+            return;
+        }
+
+        const selectedValue = this.valueObjects[index].value;
+        const selectedResult = Object.create(SelectedResult);
+        selectedResult.init(selectedValue, this.searchText, this.options, event);
+
+        if (selectedValue && selectedValue.searchCallback) {
+            const isSelectionAllowed = this.selectChildSearchCallback(selectedResult);
+            selectedResult.track();
+
+            if (isSelectionAllowed === false) {
+                return;
+            }
+
+            this.pushState(selectedValue.breadcrumbText);
+
+            // The item itself becomes the active options object, so custom
+            // properties on it stay visible to callbacks via
+            // selectedResult.parent. Callbacks it does not define are
+            // inherited from the search it was reached from.
+            this.options = selectedValue;
+            this.searchCallback = selectedValue.searchCallback;
+
+            if (selectedValue.searchDelay !== undefined) {
+                this.searchDelay = selectedValue.searchDelay;
+            }
+
+            if (selectedValue.selectCallback) {
+                this.selectCallback = selectedValue.selectCallback;
+            }
+
+            if (selectedValue.selectChildSearchCallback) {
+                this.selectChildSearchCallback
+                    = selectedValue.selectChildSearchCallback;
+            }
+
+            if (!selectedResult.isSearchTextClearingPrevented()) {
+                this.search.value = '';
+                this.searchText = '';
+            }
+
+            this.valueObjects = [];
+            this.selectIndex(null);
+            this.search.focus();
+            this.renderList();
+
+            return;
+        }
+
+        const isCloseAllowed = this.selectCallback(selectedResult);
+        selectedResult.track();
+
+        if (isCloseAllowed !== false) {
+            this.closeSwitcher();
+        }
+    },
+
+    /**
+     * Record the current search state before drilling into a nested search.
+     *
+     * The fully resolved callbacks are captured, not just the options object.
+     * Restoring from the options object alone would clear any callback that
+     * an intermediate search had inherited rather than declared.
+     *
+     * @param {string} text - Breadcrumb label for the search being left.
+     */
+    pushState(text) {
+        this.callbackStack.push({
+            text,
+            options: this.options,
+            searchCallback: this.searchCallback,
+            searchDelay: this.searchDelay,
+            selectCallback: this.selectCallback,
+            selectChildSearchCallback: this.selectChildSearchCallback,
+        });
+    },
+
+    /**
+     * Step back out of the current nested search.
+     *
+     * @returns {boolean} True when there was a search to step out of.
+     */
+    popCallback() {
+        const entry = this.callbackStack.pop();
+
+        if (!entry) {
+            return false;
+        }
+
+        this.options = entry.options;
+        this.searchCallback = entry.searchCallback;
+        this.searchDelay = entry.searchDelay;
+        this.selectCallback = entry.selectCallback;
+        this.selectChildSearchCallback = entry.selectChildSearchCallback;
+
+        return true;
+    },
+
+    /**
+     * Unwind the nested search stack back to the root search.
+     */
+    useRootCallback() {
+        while (this.popCallback()) {
+            // Intentionally empty; popCallback does the work.
+        }
+    },
+
+    /**
+     * Show one pane and hide the rest.
+     *
+     * @param {HTMLElement} paneToUse - The pane to show.
+     */
+    usePane(paneToUse) {
+        [
+            this.results,
+            this.noSearchTerms,
+            this.noResults,
+            this.oopsResults,
+            this.loading,
+        ].forEach((pane) => {
+            pane.style.display = 'none';
+        });
+
+        paneToUse.style.display = 'block';
+    },
+
+    /**
+     * Swap in a new set of active callbacks.
+     *
+     * @param {Object} options - The options to activate.
+     */
+    setOptions(options) {
+        this.options = options;
+
+        this.searchCallback = options.searchCallback;
+        this.searchDelay = options.searchDelay;
+        this.selectCallback = options.selectCallback;
+        this.selectChildSearchCallback = options.selectChildSearchCallback;
+    },
+
+    /**
+     * Detach every listener, remove the switcher's DOM, and render this
+     * instance inert. Safe to call more than once.
+     */
+    destroy() {
+        if (this.destroyed) {
+            return;
+        }
+
+        this.destroyed = true;
+
+        if (this.searchDelayTimeout) {
+            clearTimeout(this.searchDelayTimeout);
+            this.searchDelayTimeout = null;
+        }
+
+        if (this.abortSearchCallback) {
+            this.abortSearchCallback();
+            this.abortSearchCallback = null;
+        }
+
+        this.listenerController.abort();
+
+        this.parentDom.classList.remove('lstr-qswitcher-noscroll');
+
+        if (this.domElement.parentNode) {
+            this.domElement.parentNode.removeChild(this.domElement);
+        }
+
+        this.valueObjects = [];
+        this.selectedIndex = null;
+        this.isOpen = false;
+    },
 };
 
-// Define the module
-define(
-    'quick-switcher',
-    ['filters', 'selected-result', 'sorters', 'text!quick-switcher.html'],
-    quickSwitcher
-);
+/**
+ * Create a quick switcher.
+ *
+ * @param {Object} [options] - Configuration options.
+ * @param {Function} [options.searchCallback] - Produces results for a query.
+ * @param {Function} [options.selectCallback] - Runs when a result is chosen.
+ * @param {Function} [options.selectChildSearchCallback] - Runs when a nested
+ *     search is entered.
+ * @param {number} [options.searchDelay=1000] - Debounce in milliseconds.
+ * @param {string|null} [options.hotKey='K'] - Key used with Cmd/Ctrl to open,
+ *     or null to disable the hotkey entirely.
+ * @param {string} [options.trackChildrenAs] - Tracker name enabling
+ *     usage-based ranking of this search's results.
+ * @param {HTMLElement} [options.parentDom=document.body] - Host element.
+ * @returns {{open: Function, close: Function, toggle: Function,
+ *     destroy: Function, isOpen: Function}} The switcher's public API.
+ */
+export const lstrQuickSwitcher = (options = {}) => {
+    const parentDom = options.parentDom || document.body;
+
+    const quickSwitcher = Object.create(QuickSwitcher);
+    quickSwitcher.init(parentDom, options);
+
+    return {
+        open: () => quickSwitcher.openSwitcher(),
+        close: () => quickSwitcher.closeSwitcher(),
+        toggle: () => quickSwitcher.toggleSwitcher(),
+        destroy: () => quickSwitcher.destroy(),
+        isOpen: () => quickSwitcher.isOpen,
+    };
+};
+
+export default lstrQuickSwitcher;

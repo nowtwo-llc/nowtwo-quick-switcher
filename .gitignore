@@ -1,4 +1,15 @@
-/_site
-/bower_components
 /node_modules
-/Gemfile.lock
+/dist
+/demo/dist
+/coverage
+
+# Local Claude Code state -- machine-specific, never shared.
+# .claude/settings.json IS meant to be committed; only *.local.* is personal.
+.claude/settings.local.json
+.claude/*.local.json
+.claude/local/
+CLAUDE.local.md
+
+# OS / editor cruft
+.DS_Store
+*.log

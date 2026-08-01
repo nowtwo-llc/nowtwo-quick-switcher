@@ -1,146 +1,149 @@
 /**
- * Tracker Module
- * Tracks user selections and provides sorting and scoring for items based on user interaction history.
- * Uses localStorage to persist selection data between sessions.
+ * Tracker
+ *
+ * Persists which items a user selects and ranks future results accordingly.
+ * One tracker exists per tracker name; see factories.js.
  */
-define('tracker', ['tracker/selection'], function(Selection) {
+
+import Selection from './tracker/selection.js';
+import {readJson, writeJson} from './storage.js';
+
+/** Prefix for every tracker's localStorage key. */
+const STORAGE_PREFIX = 'qswitcher-tracker-';
+
+/**
+ * Compare two values, ordering lower values first.
+ *
+ * @param {*} a - Left operand.
+ * @param {*} b - Right operand.
+ * @returns {number} Standard comparator result.
+ */
+const compareLowerFirst = (a, b) => {
+    if (a !== b) {
+        return a < b ? -1 : 1;
+    }
+
+    return 0;
+};
+
+/**
+ * Compare two values, ordering greater values first.
+ *
+ * @param {*} a - Left operand.
+ * @param {*} b - Right operand.
+ * @returns {number} Standard comparator result.
+ */
+const compareGreaterFirst = (a, b) => compareLowerFirst(b, a);
+
+export const Tracker = {
     /**
-     * Compare two values, sorting lower values first.
-     * @param {*} a
-     * @param {*} b
-     * @returns {number}
+     * Initialize the tracker and rehydrate persisted selections.
+     *
+     * @param {string} trackerName - Name used to namespace stored data.
      */
-    const compareLowerFirst = (a, b) => {
-        if (a !== b) {
-            return a < b ? -1 : 1;
+    init(trackerName) {
+        this.name = trackerName;
+        this.localStorageName = STORAGE_PREFIX + trackerName;
+        this.selections = {};
+
+        const stored = readJson(this.localStorageName);
+
+        if (!stored || typeof stored !== 'object') {
+            return;
         }
-        return 0;
-    };
+
+        Object.keys(stored).forEach((key) => {
+            const selection = Object.create(Selection);
+            selection.init(stored[key]);
+            this.selections[key] = selection;
+        });
+    },
+
     /**
-     * Compare two values, sorting greater values first.
-     * @param {*} a
-     * @param {*} b
-     * @returns {number}
+     * Record that an item was selected for a given search term.
+     *
+     * @param {Object} item - The selected item; requires a trackerId.
+     * @param {string} searchText - The search text active at selection time.
      */
-    const compareGreaterFirst = (a, b) => {
-        return compareLowerFirst(b, a);
-    };
+    trackSelection(item, searchText) {
+        if (!item || !item.trackerId) {
+            return;
+        }
 
-    return {
-        /**
-         * Initialize the tracker with a name and load persisted selections from localStorage.
-         * @param {string} trackerName - The name of the tracker (used as a key in localStorage)
-         */
-        init(trackerName) {
-            this.name = trackerName;
-            this.localStorageName = 'qswitcher-tracker-' + trackerName;
-            this.selections = {};
+        const trackerId = item.trackerId;
 
-            // If localStorage is not available, do nothing
-            if (!window.localStorage) {
-                return;
-            }
+        if (!this.selections[trackerId]) {
+            this.selections[trackerId] = Object.create(Selection);
+            this.selections[trackerId].init();
+        }
 
-            // Load selections from localStorage if available
-            const selections = localStorage.getItem(this.localStorageName);
-            if (selections) {
-                this.selections = JSON.parse(selections);
+        this.selections[trackerId].increment(searchText);
 
-                // Re-instantiate Selection objects from plain data
-                const tracker = this;
-                Object.keys(this.selections).forEach((key) => {
-                    const selection = Object.create(Selection);
-                    selection.init(tracker.selections[key]);
-                    tracker.selections[key] = selection;
-                });
-            }
-        },
+        this.save();
+    },
 
-        /**
-         * Track a selection for a given item and search text.
-         * @param {Object} item - The item being selected (must have trackerId)
-         * @param {string} searchText - The search text used for the selection
-         */
-        trackSelection(item, searchText) {
-            if (!item.trackerId) {
-                return;
-            }
+    /**
+     * Rank items by static sort, then score, then original order. Returns a
+     * new array and leaves the caller's items untouched.
+     *
+     * @param {Array} items - The items to rank.
+     * @param {string} searchText - The search text to score against.
+     * @returns {Array} A new, ranked array of the same items.
+     */
+    sort(items, searchText) {
+        const decorated = items.map((item, index) => ({
+            item,
+            index,
+            score: this.scoreSelection(item, searchText),
+            sort: (item && item.trackerStaticSort) || 0,
+        }));
 
-            const trackerId = item.trackerId;
+        decorated.sort((a, b) => {
+            return compareLowerFirst(a.sort, b.sort)
+                || compareGreaterFirst(a.score, b.score)
+                || compareLowerFirst(a.index, b.index);
+        });
 
-            // Create a new Selection if one doesn't exist for this trackerId
-            if (!this.selections[trackerId]) {
-                this.selections[trackerId] = Object.create(Selection);
-                this.selections[trackerId].init();
-            }
+        return decorated.map((entry) => entry.item);
+    },
 
-            // Increment the selection count for this item
-            this.selections[trackerId].increment(searchText);
+    /**
+     * Persist the current selections.
+     *
+     * @returns {boolean} True when the write succeeded.
+     */
+    save() {
+        return writeJson(this.localStorageName, this.selections);
+    },
 
-            // Persist the updated selections
-            this.save();
-        },
+    /**
+     * Score a single item for a given search term.
+     *
+     * @param {Object} item - The item to score; requires a trackerId.
+     * @param {string} searchText - The search text to score against.
+     * @returns {number} The item's score, or 0 when untracked.
+     */
+    scoreSelection(item, searchText) {
+        if (!item || !item.trackerId) {
+            return 0;
+        }
 
-        /**
-         * Sort items based on static sort, score, and original index.
-         * @param {Array} items - The items to sort
-         * @param {string} searchText - The search text used for scoring
-         * @returns {Array} The sorted items
-         */
-        sort(items, searchText) {
-            const tracker = this;
-            // Attach sorting metadata to each item
-            items.forEach((item, index) => {
-                item._qswitcher = {
-                    index: index,
-                    score: tracker.scoreSelection(item, searchText),
-                    sort: item.trackerStaticSort ? item.trackerStaticSort : 0,
-                };
-            });
+        const selection = this.selections[item.trackerId];
 
-            // Sort by static sort, then score, then original index
-            items.sort((a, b) => {
-                return compareLowerFirst(a._qswitcher.sort, b._qswitcher.sort)
-                    || compareGreaterFirst(a._qswitcher.score, b._qswitcher.score)
-                    || compareLowerFirst(a._qswitcher.index, b._qswitcher.index);
-            });
+        if (!selection) {
+            return 0;
+        }
 
-            // Clean up metadata
-            items.forEach((item) => {
-                delete item._qswitcher;
-            });
+        return selection.score(searchText);
+    },
 
-            return items;
-        },
+    /**
+     * Forget all tracked selections for this tracker.
+     */
+    reset() {
+        this.selections = {};
+        this.save();
+    },
+};
 
-        /**
-         * Save the current selections to localStorage.
-         */
-        save() {
-            if (!window.localStorage) {
-                return;
-            }
-
-            localStorage.setItem(
-                this.localStorageName,
-                JSON.stringify(this.selections)
-            );
-        },
-
-        /**
-         * Get the score for a selection of an item with a given search text.
-         * @param {Object} item - The item to score (must have trackerId)
-         * @param {string} searchText - The search text used for scoring
-         * @returns {number} The score for the selection
-         */
-        scoreSelection(item, searchText) {
-            const selection = this.selections[item.trackerId];
-
-            if (typeof selection === 'undefined') {
-                return 0;
-            }
-
-            return selection.score(searchText);
-        },
-    };
-});
+export default Tracker;
