@@ -67,6 +67,7 @@
         "test:coverage": "vitest run --coverage",
         "verify:dist": "node scripts/verify-dist.mjs",
         "lint": "eslint .",
+        "lint:check": "eslint --color --max-warnings=0 .",
         "lint:fix": "eslint . --fix",
         "typecheck": "tsc -p tsconfig.json",
         "update": "npm-check-updates -u",
@@ -82,7 +83,7 @@
         "jsdom": "^30.0.1",
         "npm-check-updates": "^23.0.0",
         "sass": "^1.102.0",
-        "typescript": "^6.0.3",
+        "typescript": "^7.0.2",
         "vite": "^8.2.0",
         "vitest": "^4.1.10"
     }

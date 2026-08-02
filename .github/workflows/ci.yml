@@ -39,8 +39,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # lint:check adds --max-warnings=0, so a warning fails the build rather
+      # than scrolling past in the log.
       - name: Lint
-        run: npm run lint
+        run: npm run lint:check
 
       - name: Test
         run: npm run test:coverage
