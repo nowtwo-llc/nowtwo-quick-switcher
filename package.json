@@ -1,6 +1,6 @@
 {
     "name": "@nowtwo-llc/quick-switcher",
-    "version": "4.0.0",
+    "version": "4.0.1",
     "description": "Keyboard-driven command palette for the web, with nested drill-down searches, breadcrumb navigation, and usage-based result ranking. No runtime dependencies.",
     "keywords": [
         "quick-switcher",
