@@ -6,8 +6,10 @@ on:
 
 permissions:
   contents: read
-  # Required for npm trusted publishing (OIDC). No NPM_TOKEN secret is used.
+  # id-token for npm trusted publishing (OIDC); packages for the
+  # GitHub Packages mirror.
   id-token: write
+  packages: write
 
 jobs:
   publish:
@@ -54,3 +56,28 @@ jobs:
       # Provenance is generated automatically under trusted publishing.
       - name: Publish to npm
         run: npm publish
+
+      # ---- GitHub Packages mirror -------------------------------------
+      # Secondary copy for internal use. npm above is the canonical source,
+      # so a mirror failure must not fail an otherwise-good release; it
+      # surfaces as a warning on the run instead.
+
+      - name: Point npm at GitHub Packages
+        if: success()
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: https://npm.pkg.github.com
+          scope: '@nowtwo-llc'
+
+      - name: Publish to GitHub Packages
+        if: success()
+        continue-on-error: true
+        # publishConfig.registry wins over a --registry flag, so it has to be
+        # rewritten rather than overridden on the command line.
+        run: |
+          npm pkg set publishConfig.registry=https://npm.pkg.github.com
+          npm publish
+          npm pkg set publishConfig.registry=https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

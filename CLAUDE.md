@@ -9,13 +9,16 @@ Quick Switcher is a dependency-free, front-end command palette for the web
 drill-down searches with breadcrumbs and ranks results by the user's own
 selection history, persisted in `localStorage`.
 
-Published as `@nowtwollc/quick-switcher` to **npmjs.com**. Maintained by
-NowTwo LLC; originally created by Matt Light ([lightster](https://github.com/lightster)).
+Published as `@nowtwo-llc/quick-switcher` to **npmjs.com** (canonical, what the
+README points at) and mirrored to **GitHub Packages** for internal use.
+Maintained by NowTwo LLC; originally created by Matt Light
+([lightster](https://github.com/lightster)).
 
-Note that the npm scope (`@nowtwollc`) and the GitHub org (`nowtwo-llc`) differ
-by a hyphen. Do not "fix" one to match the other — both are correct, and a
-blanket find-and-replace across the repo will break either the install
-instructions or the repository URLs.
+The scope must stay `@nowtwo-llc`: GitHub Packages requires the npm scope to
+match the repository owner, and the owner is `nowtwo-llc`. The npm org
+`nowtwollc` also exists but is unused — publishing under it would force two
+different package names for the same library, since `package.json` has only one
+`name` field.
 
 Scoped packages default to restricted on npm, so `publishConfig.access` must
 stay `"public"` or publishing fails.
