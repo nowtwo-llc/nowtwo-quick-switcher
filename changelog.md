@@ -9,9 +9,10 @@ repository is public.
 
 ### Breaking
 
-- **Renamed to `@nowtwo-llc/quick-switcher`** (was
-  `@nowtwo-llc/quick-switcher`). The GitHub Packages scope has to match
-  the repository owner.
+- **Renamed to `@nowtwollc/quick-switcher`** (was
+  `@nowtwo-llc/quick-switcher`), and **published to npmjs.com** rather
+  than a private registry. Installing no longer requires a registry mapping or
+  an auth token.
 - **`text` is rendered as plain text.** It was previously written through
   `innerHTML` despite being documented as text, which let untrusted result data
   inject markup. Move any markup you were passing in `text` to `html`.

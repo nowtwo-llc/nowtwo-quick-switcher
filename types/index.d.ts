@@ -1,5 +1,5 @@
 /**
- * Type definitions for @nowtwo-llc/quick-switcher.
+ * Type definitions for @nowtwollc/quick-switcher.
  *
  * Hand-written rather than generated: the generated output typed every
  * callback as `Function`, which told consumers nothing useful.

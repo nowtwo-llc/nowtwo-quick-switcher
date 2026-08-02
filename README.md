@@ -14,32 +14,15 @@ your own data.
 
 ## Install
 
-This package is published to GitHub Packages, so npm needs to know where to
-find the `@nowtwo-llc` scope. Add this to your project's `.npmrc`:
-
-```
-@nowtwo-llc:registry=https://npm.pkg.github.com
-```
-
-GitHub Packages requires authentication for installs, including public
-packages, so you will also need a token with `read:packages` in your
-`~/.npmrc`:
-
-```
-//npm.pkg.github.com/:_authToken=YOUR_TOKEN
-```
-
-Then:
-
 ```bash
-npm install @nowtwo-llc/quick-switcher
+npm install @nowtwollc/quick-switcher
 ```
 
 ## Quick start
 
 ```js
-import lstrQuickSwitcher from '@nowtwo-llc/quick-switcher';
-import '@nowtwo-llc/quick-switcher/style.css';
+import lstrQuickSwitcher from '@nowtwollc/quick-switcher';
+import '@nowtwollc/quick-switcher/style.css';
 
 const switcher = lstrQuickSwitcher({
   searchCallback(searchText, resultHandler) {
@@ -203,11 +186,11 @@ listeners live on `document` and are only removed here.
 Import the compiled stylesheet, or the Sass source to theme it:
 
 ```js
-import '@nowtwo-llc/quick-switcher/style.css';
+import '@nowtwollc/quick-switcher/style.css';
 ```
 
 ```scss
-@use '@nowtwo-llc/quick-switcher/scss';
+@use '@nowtwollc/quick-switcher/scss';
 ```
 
 Every class is prefixed `lstr-qswitcher-`. The main hooks are
@@ -281,7 +264,7 @@ npm run lint
 See [changelog.md](changelog.md) for the full list. The changes most likely to
 affect you:
 
-- The package is now `@nowtwo-llc/quick-switcher` (was
+- The package is now `@nowtwollc/quick-switcher` (was
   `@nowtwo-llc/quick-switcher`).
 - **`text` is now escaped.** If you were passing markup in `text`, move it to
   `html`.

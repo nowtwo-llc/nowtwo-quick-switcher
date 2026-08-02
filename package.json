@@ -1,5 +1,5 @@
 {
-    "name": "@nowtwo-llc/quick-switcher",
+    "name": "@nowtwollc/quick-switcher",
     "version": "4.0.0",
     "description": "Keyboard-driven command palette for the web, with nested drill-down searches, breadcrumb navigation, and usage-based result ranking. No runtime dependencies.",
     "keywords": [
@@ -50,7 +50,8 @@
         "node": ">=20"
     },
     "publishConfig": {
-        "registry": "https://npm.pkg.github.com"
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
     },
     "scripts": {
         "clean": "node scripts/clean.mjs",

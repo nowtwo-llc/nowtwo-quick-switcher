@@ -6,7 +6,8 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  # Required for npm trusted publishing (OIDC). No NPM_TOKEN secret is used.
+  id-token: write
 
 jobs:
   publish:
@@ -17,10 +18,17 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
-          registry-url: https://npm.pkg.github.com
-          scope: '@nowtwo-llc'
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1. Node 24 ships npm 11.x, but
+      # upgrade explicitly so a runner image change cannot silently regress to
+      # a version that falls back to token auth and fails.
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       - run: npm ci
 
@@ -43,7 +51,6 @@ jobs:
           fi
 
       # prepublishOnly runs the build, so dist/ does not need to be committed.
-      - name: Publish to GitHub Packages
+      # Provenance is generated automatically under trusted publishing.
+      - name: Publish to npm
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

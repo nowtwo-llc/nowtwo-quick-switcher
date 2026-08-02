@@ -9,12 +9,16 @@ Quick Switcher is a dependency-free, front-end command palette for the web
 drill-down searches with breadcrumbs and ranks results by the user's own
 selection history, persisted in `localStorage`.
 
-Published as `@nowtwo-llc/quick-switcher` to **GitHub Packages**. Maintained by
+Published as `@nowtwollc/quick-switcher` to **npmjs.com**. Maintained by
 NowTwo LLC; originally created by Matt Light ([lightster](https://github.com/lightster)).
 
-The scope must stay `@nowtwo-llc` — GitHub Packages requires the npm scope to
-match the repository owner. Note that GitHub Packages requires an auth token to
-*install*, even though the package is public.
+Note that the npm scope (`@nowtwollc`) and the GitHub org (`nowtwo-llc`) differ
+by a hyphen. Do not "fix" one to match the other — both are correct, and a
+blanket find-and-replace across the repo will break either the install
+instructions or the repository URLs.
+
+Scoped packages default to restricted on npm, so `publishConfig.access` must
+stay `"public"` or publishing fails.
 
 ## Commands
 
@@ -101,3 +105,8 @@ Vitest with the jsdom environment. Two things to watch for:
 Releases publish from `.github/workflows/publish.yml` when a GitHub Release is
 published. The workflow asserts the tag matches `package.json`'s version, and
 `prepublishOnly` runs the build — `dist/` is not committed.
+
+Authentication is npm **trusted publishing** (OIDC), so there is no `NPM_TOKEN`
+secret. That requires `id-token: write` and npm >= 11.5.1, which is why the
+workflow upgrades npm before publishing. Provenance attestations are generated
+automatically; do not add a `--provenance` flag.
