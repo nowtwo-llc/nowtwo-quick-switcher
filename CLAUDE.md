@@ -105,11 +105,27 @@ Vitest with the jsdom environment. Two things to watch for:
 
 ## Release
 
-Releases publish from `.github/workflows/publish.yml` when a GitHub Release is
-published. The workflow asserts the tag matches `package.json`'s version, and
-`prepublishOnly` runs the build — `dist/` is not committed.
+Pushing a `v*` tag runs `.github/workflows/publish.yml`. It asserts the tag
+matches `package.json`'s version, and `prepublishOnly` runs the build — `dist/`
+is not committed.
 
-Authentication is npm **trusted publishing** (OIDC), so there is no `NPM_TOKEN`
-secret. That requires `id-token: write` and npm >= 11.5.1, which is why the
-workflow upgrades npm before publishing. Provenance attestations are generated
-automatically; do not add a `--provenance` flag.
+Two jobs: `npm` publishes to npmjs.com, then `github-packages` mirrors it via
+`needs: npm`, so the internal copy is never ahead of the public one.
+
+Authentication for npm is **trusted publishing** (OIDC), so there is no
+`NPM_TOKEN` secret. That requires `id-token: write` and npm >= 11.5.1, which is
+why the job upgrades npm first. Provenance is attached automatically; do not add
+a `--provenance` flag.
+
+Two things that will break the publish if changed carelessly:
+
+- `publishConfig` must contain only `access`. Adding a `registry` there
+  out-ranks `setup-node`'s `registry-url` *and* a `--registry` flag, which
+  would send the GitHub Packages job back to npm.
+- The `environment: npm-publish` name must match the Environment field on the
+  trusted publisher at npmjs.com. GitHub puts it in the OIDC claim and npm
+  rejects the publish if they disagree.
+
+Actions are pinned to commit SHAs with the tag in a trailing comment. Keep it
+that way — a mutable `@v7` tag can be repointed by anyone who compromises the
+action's repository.

@@ -28,10 +28,13 @@ export default [
         },
     },
     {
+        // Node-side files. The extension classes matter: build scripts are
+        // written as ESM with .mjs, and a bare '*.js' pattern silently leaves
+        // them without Node globals.
         files: [
-            'test/**/*.js',
-            'scripts/**/*.js',
-            '*.config.js',
+            'test/**/*.{js,mjs}',
+            'scripts/**/*.{js,mjs}',
+            '*.config.{js,mjs}',
         ],
         languageOptions: {
             globals: {

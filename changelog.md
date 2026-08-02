@@ -2,10 +2,12 @@
 
 This project follows [semantic versioning](https://semver.org/).
 
-## v4.0.0
+## v4.0.1 — 2026-08-02
 
 The modernization release: the package is renamed, the source is ESM, and the
 repository is public.
+
+Released as 4.0.1; 4.0.0 was never published.
 
 ### Breaking
 

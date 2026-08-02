@@ -1,215 +1,123 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Quick Switcher — keyboard-driven command palette</title>
-    <meta name="description" content="A dependency-free command palette for the web: nested searches, breadcrumbs, and usage-based ranking.">
-    <style>
-        :root {
-            color-scheme: light dark;
-            --bg: #ffffff;
-            --fg: #16181d;
-            --muted: #5c6370;
-            --line: #e3e6ea;
-            --accent: #2f6fed;
-            --code-bg: #f5f6f7;
-        }
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Quick Switcher — keyboard-driven command palette</title>
+        <meta
+            name="description"
+            content="A dependency-free command palette for the web: nested searches, breadcrumbs, and usage-based ranking."
+        />
 
-        @media (prefers-color-scheme: dark) {
+        <link rel="stylesheet" href="./demo.css" />
+        <style>
+            /* Quick Switcher's identity: the tool blue, not the toy warmth of
+               its sibling libraries. */
             :root {
-                --bg: #14161a;
-                --fg: #e8eaed;
-                --muted: #9aa1ac;
-                --line: #2a2e35;
-                --accent: #6c9bff;
-                --code-bg: #1c1f25;
-
-                /*
-                 * Theme the switcher itself to match. This is the library's
-                 * full theming API -- eleven variables, no overrides.
-                 */
-                --lstr-qswitcher-bg: #1c1f25;
-                --lstr-qswitcher-fg: #e8eaed;
-                --lstr-qswitcher-muted: #9aa1ac;
-                --lstr-qswitcher-surface: #14161a;
-                --lstr-qswitcher-accent: #6c9bff;
-                --lstr-qswitcher-input-fg: #e8eaed;
-                --lstr-qswitcher-selected-bg: #2f6fed;
-                --lstr-qswitcher-selected-fg: #ffffff;
-                --lstr-qswitcher-key-fg: #8b93a1;
-                --lstr-qswitcher-close-fg: #9aa1ac;
-                --lstr-qswitcher-overlay-bg: rgba(0, 0, 0, 0.65);
+                --nt-accent: #2f6fed;
+                --nt-accent-ink: #fff;
             }
-        }
 
-        * { box-sizing: border-box; }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --nt-accent: #6c9bff;
+                    --nt-accent-ink: #0b1220;
 
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
-            font: 16px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                Roboto, Helvetica, Arial, sans-serif;
-        }
+                    /* Theme the switcher itself to match the page. This is the
+                       library's entire theming API — eleven variables, no
+                       overrides. */
+                    --lstr-qswitcher-bg: #161b22;
+                    --lstr-qswitcher-fg: #e7ebf0;
+                    --lstr-qswitcher-muted: #98a2b3;
+                    --lstr-qswitcher-surface: #0e1116;
+                    --lstr-qswitcher-accent: #6c9bff;
+                    --lstr-qswitcher-input-fg: #e7ebf0;
+                    --lstr-qswitcher-selected-bg: #2f6fed;
+                    --lstr-qswitcher-selected-fg: #fff;
+                    --lstr-qswitcher-key-fg: #8b93a1;
+                    --lstr-qswitcher-close-fg: #98a2b3;
+                    --lstr-qswitcher-overlay-bg: rgb(0 0 0 / 65%);
+                }
+            }
 
-        .wrap {
-            max-width: 46rem;
-            margin: 0 auto;
-            padding: 4rem 1.25rem 6rem;
-        }
+            /* Selection readout. Hidden until something is picked. */
+            #demo-output {
+                margin: 0.9rem 0 0;
+                padding: 0.7rem 0.9rem;
+                background: var(--nt-code-bg);
+                border: 1px solid var(--nt-line);
+                border-radius: 10px;
+                font-family: var(--nt-mono);
+                font-size: 0.86rem;
+            }
 
-        h1 {
-            font-size: clamp(2rem, 6vw, 2.75rem);
-            line-height: 1.15;
-            letter-spacing: -0.02em;
-            margin: 0 0 0.75rem;
-        }
+            /* Injected into results by the accent-colour search. */
+            .demo-swatch {
+                display: inline-block;
+                width: 11px;
+                height: 11px;
+                border-radius: 2px;
+                vertical-align: middle;
+                box-shadow: inset 0 0 0 1px rgb(0 0 0 / 15%);
+            }
 
-        .lede {
-            font-size: 1.15rem;
-            color: var(--muted);
-            margin: 0 0 2.5rem;
-        }
+            /* Injected into results by the project search. */
+            .demo-badge {
+                font-weight: 600;
+                font-size: 0.85em;
+                letter-spacing: 0.03em;
+                text-transform: uppercase;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="nt-page">
+            <h1 class="nt-title">quick<em>switcher</em></h1>
+            <p class="nt-lede">
+                A dependency-free command palette for the web — nested searches, breadcrumb navigation, and results
+                ranked by how you actually use them.
+            </p>
 
-        h2 {
-            font-size: 1.15rem;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-            color: var(--muted);
-            margin: 3rem 0 1rem;
-        }
+            <ul class="nt-meta">
+                <li>v4.0.1</li>
+                <li>0 dependencies</li>
+                <li>11 theme variables</li>
+                <li>MIT</li>
+            </ul>
 
-        kbd {
-            display: inline-block;
-            padding: 0.15em 0.45em;
-            border: 1px solid var(--line);
-            border-bottom-width: 2px;
-            border-radius: 5px;
-            background: var(--code-bg);
-            font: inherit;
-            font-size: 0.9em;
-            white-space: nowrap;
-        }
+            <section class="nt-section">
+                <h2 class="nt-label">Try it</h2>
+                <div class="nt-controls">
+                    <button type="button" class="nt-trigger" id="open-main">Open the palette</button>
+                    <button type="button" class="nt-btn" id="open-simple">Minimal version</button>
+                    <span class="nt-note" style="margin: 0">or press <kbd class="demo-hotkey">Ctrl+K</kbd></span>
+                </div>
+                <p id="demo-output" hidden></p>
+            </section>
 
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            align-items: center;
-        }
+            <section class="nt-section">
+                <h2 class="nt-label">Things worth trying</h2>
+                <ul class="nt-list">
+                    <li>
+                        Type <code>people</code> or <code>documents</code> and press <kbd>Enter</kbd> to drill into a
+                        nested search.
+                    </li>
+                    <li>Press <kbd>Backspace</kbd> on an empty box to step back out.</li>
+                    <li>Pick the same result a few times, reopen, and watch it climb the list.</li>
+                    <li><code>Settings</code> → <code>Accent color</code> nests three levels deep.</li>
+                    <li><code>Projects</code> keeps active work above archived work no matter what you pick.</li>
+                    <li>Type <code>demo error</code> to see the failure state.</li>
+                </ul>
+            </section>
 
-        button.demo-btn {
-            font: inherit;
-            font-weight: 600;
-            padding: 0.6rem 1.1rem;
-            border-radius: 8px;
-            border: 1px solid transparent;
-            background: var(--accent);
-            color: #fff;
-            cursor: pointer;
-        }
+            <section class="nt-section">
+                <h2 class="nt-label">Install</h2>
+                <pre class="nt-code"><code>npm install @nowtwo-llc/quick-switcher</code></pre>
+            </section>
 
-        button.demo-btn.secondary {
-            background: transparent;
-            border-color: var(--line);
-            color: var(--fg);
-        }
-
-        button.demo-btn:hover { filter: brightness(1.08); }
-
-        #demo-output {
-            margin-top: 1.25rem;
-            padding: 0.7rem 0.9rem;
-            border-radius: 8px;
-            border: 1px solid var(--line);
-            background: var(--code-bg);
-            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 0.9rem;
-        }
-
-        pre {
-            background: var(--code-bg);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            padding: 1rem;
-            overflow-x: auto;
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
-
-        ul.features { padding-left: 1.1rem; }
-        ul.features li { margin-bottom: 0.4rem; }
-
-        footer {
-            margin-top: 4rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid var(--line);
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        a { color: var(--accent); }
-
-        /* Swatches used by the accent-color picker. */
-        .demo-swatch {
-            display: inline-block;
-            width: 11px;
-            height: 11px;
-            border-radius: 2px;
-            vertical-align: middle;
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Status badges used by the project search. */
-        .demo-badge {
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 0.03em;
-        }
-    </style>
-</head>
-<body>
-    <main class="wrap">
-        <h1>Quick Switcher</h1>
-        <p class="lede">
-            A dependency-free command palette for the web — nested searches,
-            breadcrumb navigation, and results ranked by how you actually use
-            them.
-        </p>
-
-        <div class="actions">
-            <button type="button" class="demo-btn" id="open-main">
-                Open the full demo
-            </button>
-            <button type="button" class="demo-btn secondary" id="open-simple">
-                Open the minimal demo
-            </button>
-            <span>or press <kbd class="demo-hotkey">Ctrl+K</kbd></span>
-        </div>
-
-        <p id="demo-output" hidden></p>
-
-        <h2>Try</h2>
-        <ul class="features">
-            <li>Type <code>people</code> or <code>documents</code> and press
-                <kbd>Enter</kbd> to drill into a nested search.</li>
-            <li>Press <kbd>Backspace</kbd> on an empty box to step back out.</li>
-            <li>Pick the same result a few times, reopen, and watch it climb
-                the list.</li>
-            <li><code>Settings</code> → <code>Accent color</code> nests three
-                levels deep.</li>
-            <li><code>Projects</code> keeps active work above archived work
-                no matter what you pick.</li>
-            <li>Type <code>demo error</code> to see the failure state.</li>
-        </ul>
-
-        <h2>Install</h2>
-<pre><code>npm install @nowtwo-llc/quick-switcher</code></pre>
-
-        <h2>Use</h2>
-<pre><code>import lstrQuickSwitcher from '@nowtwo-llc/quick-switcher';
+            <section class="nt-section">
+                <h2 class="nt-label">Use</h2>
+                <pre class="nt-code"><code>import lstrQuickSwitcher from '@nowtwo-llc/quick-switcher';
 import '@nowtwo-llc/quick-switcher/style.css';
 
 const switcher = lstrQuickSwitcher({
@@ -217,27 +125,25 @@ const switcher = lstrQuickSwitcher({
     const people = ['Zach', 'Stacy', 'Matt', 'Lightster', 'Baxter'];
 
     resultHandler.setResults(
-      people.filter((p) => resultHandler.filters.isMatch(searchText, p))
+      people.filter((p) =&gt; resultHandler.filters.isMatch(searchText, p))
     );
   },
   selectCallback(selected) {
     console.log(selected.selectedValue);
   },
 });</code></pre>
+            </section>
 
-        <footer>
-            <p>
-                MIT licensed.
-                <a href="https://github.com/nowtwo-llc/nowtwo-quick-switcher">Source on GitHub</a>.
-            </p>
-            <p>
-                Maintained by NowTwo LLC. Originally created by Matt Light
-                (<a href="https://github.com/lightster">lightster</a>) and
-                adapted with thanks.
-            </p>
-        </footer>
-    </main>
+            <footer class="nt-footer">
+                <p>MIT licensed · <a href="https://github.com/nowtwo-llc/nowtwo-quick-switcher">Source on GitHub</a></p>
+                <p>Maintained by <a href="https://www.nowtwo.io/">NowTwo LLC</a>.</p>
+                <p>
+                    Originally created by Matt Light (<a href="https://github.com/lightster">lightster</a>) and adapted
+                    with thanks.
+                </p>
+            </footer>
+        </main>
 
-    <script type="module" src="./demo.js"></script>
-</body>
+        <script type="module" src="./demo.js"></script>
+    </body>
 </html>
