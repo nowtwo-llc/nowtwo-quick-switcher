@@ -34,7 +34,7 @@ npm test
 npm run build
 ```
 
-CI runs all three on Node 20, 22, and 24.
+CI runs all three on Node 22, then verifies the packaged output.
 
 ## Conventions
 

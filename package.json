@@ -69,7 +69,7 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "typecheck": "tsc -p tsconfig.json",
-        "update": "npm-check-updates -u --reject jsdom",
+        "update": "npm-check-updates -u",
         "prepublishOnly": "npm run build",
         "update:check": "npm-check-updates"
     },

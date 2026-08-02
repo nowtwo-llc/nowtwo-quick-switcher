@@ -26,7 +26,8 @@ Released as 4.0.1; 4.0.0 was never published.
   `dist/quick-switcher.min.js` path and its `lstrQuickSwitcher` global, so
   `<script>` consumers are unaffected.
 - **`dist/` is no longer committed.** It is built on publish.
-- Requires Node 20+ to build. There is no Node requirement to *use* the library.
+- Requires Node 22 to build and test. There is no Node requirement to *use*
+  the library.
 - The close control is a `<button>` rather than an `<a href="#">`.
 - The internal `data-lstr-qswitcher` attribute is now
   `data-lstr-qswitcher-index` and holds a bare integer.
@@ -72,7 +73,7 @@ Released as 4.0.1; 4.0.0 was never published.
   and with it the package's only git-URL dependency.
 - Tests moved from tape to Vitest with jsdom, from 3 assertions to full
   coverage of the tracker, filters, storage, and DOM lifecycle.
-- CI moved from Travis to GitHub Actions (Node 20/22/24).
+- CI moved from Travis to GitHub Actions (Node 22).
 - The Jekyll documentation site was replaced with a static demo page built by
   Vite and deployed to GitHub Pages.
 - Relicensed clearly as MIT. The package previously declared `UNLICENSED` while

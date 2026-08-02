@@ -15,17 +15,6 @@ updates:
         update-types:
           - minor
           - patch
-    ignore:
-      # jsdom majors move the Node floor: 30 requires >= 22.22.2, which would
-      # break the Node 20 leg of the CI matrix. This package declares
-      # engines.node >= 20.19 and tests it deliberately, so bumping jsdom is a
-      # supported-runtime decision, not a dependency bump.
-      #
-      # Kept in sync with the --reject list in the "update" script; remove from
-      # both together.
-      - dependency-name: jsdom
-        update-types:
-          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
