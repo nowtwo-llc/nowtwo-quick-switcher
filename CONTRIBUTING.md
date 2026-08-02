@@ -4,7 +4,17 @@ Thanks for your interest in Quick Switcher.
 
 ## Getting set up
 
-You need Node 20 or newer.
+**Use Node 22** — there is an `.nvmrc`, so `nvm use` picks it up.
+
+The `engines` field says `>=20` because that describes *consumers*: the
+package ships browser code with no runtime dependencies, so nothing in it ever
+executes in Node and it imposes almost nothing on the projects that install it.
+
+Developing it is stricter. The dev toolchain floor is **Node 22.22.2**, set by
+jsdom 30 (`^22.22.2 || ^24.15.0 || >=26.0.0`). On an older Node the test run
+fails with `webidl.util.markAsUncloneable is not a function` before a single
+test executes. That constraint deliberately lives here and in `.nvmrc` rather
+than in `engines`, which would push it onto consumers who are unaffected by it.
 
 ```bash
 git clone https://github.com/nowtwo-llc/nowtwo-quick-switcher.git

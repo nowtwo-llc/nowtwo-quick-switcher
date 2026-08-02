@@ -17,19 +17,20 @@ jobs:
   verify:
     runs-on: ubuntu-latest
 
-    # engines declares Node >= 20, so verify against every supported major
-    # rather than a single version.
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ['20', '22', '24']
-
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # 22 floats to the newest 22.x, which is what clears jsdom 30's floor of
+      # ^22.22.2 || ^24.15.0 || >=26.0.0. Pinning a specific 22.x below 22.22.2
+      # would fail with "webidl.util.markAsUncloneable is not a function"
+      # before any test runs.
+      #
+      # A matrix would add nothing here: src/ contains no Node API at all and
+      # the package has no runtime dependencies, so the extra legs would only
+      # re-test vitest and jsdom, not this library.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
