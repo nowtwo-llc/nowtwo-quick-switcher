@@ -264,8 +264,8 @@ npm run lint
 See [changelog.md](changelog.md) for the full list. The changes most likely to
 affect you:
 
-- The package is now `@nowtwo-llc/quick-switcher` (was
-  `@nowtwo-llc/quick-switcher`).
+- The package is now `@nowtwo-llc/quick-switcher`, published to npmjs.com.
+  Installing no longer requires a registry mapping or an auth token.
 - **`text` is now escaped.** If you were passing markup in `text`, move it to
   `html`.
 - The library is now ESM-first; the UMD build and the `lstrQuickSwitcher`
