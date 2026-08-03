@@ -26,10 +26,8 @@
     "main": "./dist/quick-switcher.min.js",
     "module": "./dist/quick-switcher.esm.js",
     "types": "./types/index.d.ts",
-    "sideEffects": [
-        "*.css",
-        "*.scss"
-    ],
+    "unpkg": "./dist/quick-switcher.min.js",
+    "jsdelivr": "./dist/quick-switcher.min.js",
     "exports": {
         ".": {
             "types": "./types/index.d.ts",
@@ -41,6 +39,10 @@
         "./scss": "./src/quick-switcher.scss",
         "./package.json": "./package.json"
     },
+    "sideEffects": [
+        "*.css",
+        "*.scss"
+    ],
     "files": [
         "dist/",
         "types/",
@@ -53,26 +55,28 @@
         "access": "public"
     },
     "scripts": {
-        "clean": "node scripts/clean.mjs",
         "build": "npm run clean && npm run build:js && npm run build:css",
-        "build:js": "vite build",
         "build:css": "sass --style=compressed --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
         "build:demo": "vite build --config demo/vite.config.js",
+        "build:js": "vite build",
+        "build:prod": "npm run build",
+        "clean": "node scripts/clean.mjs",
+        "clean:dist": "rm -rf dist",
         "demo": "vite --config demo/vite.config.js",
-        "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
-        "watch:js": "vite build --watch",
-        "watch:css": "sass --watch --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
-        "test": "vitest run",
-        "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage",
-        "verify:dist": "node scripts/verify-dist.mjs",
         "lint": "eslint .",
         "lint:check": "eslint --color --max-warnings=0 .",
         "lint:fix": "eslint . --fix",
+        "prepublishOnly": "npm run build",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "test:watch": "vitest",
         "typecheck": "tsc -p tsconfig.json",
         "update": "npm-check-updates -u",
-        "prepublishOnly": "npm run build",
-        "update:check": "npm-check-updates"
+        "update:check": "npm-check-updates",
+        "verify:dist": "node scripts/verify-dist.mjs",
+        "watch": "concurrently 'npm run watch:js' 'npm run watch:css'",
+        "watch:css": "sass --watch --load-path=src src/quick-switcher.scss dist/quick-switcher.min.css",
+        "watch:js": "vite build --watch"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
