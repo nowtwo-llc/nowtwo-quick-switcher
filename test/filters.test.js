@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import filters from '../src/filters.js';
 
@@ -8,13 +8,11 @@ describe('filters.isMatch', () => {
     });
 
     it('matches multi-word criteria in any order', () => {
-        expect(filters.isMatch('friends world', 'hello world and friends'))
-            .toBe(true);
+        expect(filters.isMatch('friends world', 'hello world and friends')).toBe(true);
     });
 
     it('requires every search word to be present', () => {
-        expect(filters.isMatch('world friends the', 'hello world and friends'))
-            .toBe(false);
+        expect(filters.isMatch('world friends the', 'hello world and friends')).toBe(false);
     });
 
     it('matches regardless of case', () => {

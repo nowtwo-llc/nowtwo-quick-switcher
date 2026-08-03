@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it} from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * The demo page is the project's public landing page and is deployed from CI,
@@ -22,15 +22,10 @@ describe('demo page', () => {
 
         expect(document.querySelectorAll('.lstr-qswitcher')).toHaveLength(2);
 
-        expect(
-            document.querySelector('.lstr-qswitcher-container[style*="block"]')
-        ).not.toBeNull();
+        expect(document.querySelector('.lstr-qswitcher-container[style*="block"]')).not.toBeNull();
 
-        expect(
-            document.querySelectorAll('.lstr-qswitcher-results li').length
-        ).toBeGreaterThan(0);
+        expect(document.querySelectorAll('.lstr-qswitcher-results li').length).toBeGreaterThan(0);
 
-        expect(document.querySelector('.demo-hotkey').textContent)
-            .toMatch(/Ctrl\+K|Cmd\+K/);
+        expect(document.querySelector('.demo-hotkey').textContent).toMatch(/Ctrl\+K|Cmd\+K/);
     });
 });

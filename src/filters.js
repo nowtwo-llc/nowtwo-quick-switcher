@@ -63,7 +63,7 @@ export const filters = {
         }
 
         return this.areWordsFound(needle, haystack);
-    },
+    }
 };
 
 export default filters;

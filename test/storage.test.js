@@ -1,6 +1,6 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {readJson, writeJson} from '../src/storage.js';
+import { readJson, writeJson } from '../src/storage.js';
 
 /**
  * Swap window.localStorage for the duration of a test.
@@ -13,7 +13,7 @@ const replaceLocalStorage = (descriptor) => {
 
     Object.defineProperty(window, 'localStorage', {
         configurable: true,
-        ...descriptor,
+        ...descriptor
     });
 
     return () => Object.defineProperty(window, 'localStorage', original);
@@ -35,8 +35,8 @@ describe('storage', () => {
 
     describe('when storage works', () => {
         it('round-trips a value', () => {
-            expect(writeJson('key', {a: 1})).toBe(true);
-            expect(readJson('key')).toEqual({a: 1});
+            expect(writeJson('key', { a: 1 })).toBe(true);
+            expect(readJson('key')).toEqual({ a: 1 });
         });
 
         it('returns null for a missing key', () => {
@@ -56,21 +56,19 @@ describe('storage', () => {
         });
 
         it('reports failure when a write throws', () => {
-            const setItem = vi.spyOn(Storage.prototype, 'setItem')
-                .mockImplementation(() => {
-                    throw new Error('QuotaExceededError');
-                });
+            const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+                throw new Error('QuotaExceededError');
+            });
 
-            expect(writeJson('key', {a: 1})).toBe(false);
+            expect(writeJson('key', { a: 1 })).toBe(false);
 
             setItem.mockRestore();
         });
 
         it('returns null when a read throws', () => {
-            const getItem = vi.spyOn(Storage.prototype, 'getItem')
-                .mockImplementation(() => {
-                    throw new Error('SecurityError');
-                });
+            const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+                throw new Error('SecurityError');
+            });
 
             expect(readJson('key')).toBeNull();
 
@@ -80,10 +78,10 @@ describe('storage', () => {
 
     describe('when storage is unavailable', () => {
         it('degrades when localStorage is absent', () => {
-            restore = replaceLocalStorage({value: undefined});
+            restore = replaceLocalStorage({ value: undefined });
 
             expect(readJson('key')).toBeNull();
-            expect(writeJson('key', {a: 1})).toBe(false);
+            expect(writeJson('key', { a: 1 })).toBe(false);
         });
 
         it('degrades when accessing localStorage throws', () => {
@@ -92,14 +90,14 @@ describe('storage', () => {
             restore = replaceLocalStorage({
                 get() {
                     throw new Error('SecurityError: access denied');
-                },
+                }
             });
 
             expect(() => readJson('key')).not.toThrow();
             expect(readJson('key')).toBeNull();
 
-            expect(() => writeJson('key', {a: 1})).not.toThrow();
-            expect(writeJson('key', {a: 1})).toBe(false);
+            expect(() => writeJson('key', { a: 1 })).not.toThrow();
+            expect(writeJson('key', { a: 1 })).toBe(false);
         });
 
         it('degrades when a value cannot be serialized', () => {

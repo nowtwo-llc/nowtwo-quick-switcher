@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           # Trusted publishing needs Node >= 22.14.0.
-          node-version: 22.x
+          node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
           cache: npm
 
@@ -94,7 +94,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 22.x
+          node-version-file: .nvmrc
           registry-url: https://npm.pkg.github.com
           scope: '@nowtwo-llc'
           cache: npm

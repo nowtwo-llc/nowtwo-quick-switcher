@@ -1,5 +1,5 @@
-import {defineConfig} from 'vite';
-import {fileURLToPath} from 'node:url';
+import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Config for the demo site, which is deployed to GitHub Pages. It builds the
@@ -12,6 +12,6 @@ export default defineConfig({
     base: './',
     build: {
         outDir: 'dist',
-        emptyOutDir: true,
-    },
+        emptyOutDir: true
+    }
 });

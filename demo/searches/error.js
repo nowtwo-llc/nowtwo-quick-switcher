@@ -9,5 +9,5 @@ export default {
 
     searchCallback(searchText, resultHandler) {
         resultHandler.setError();
-    },
+    }
 };

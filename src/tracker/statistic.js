@@ -14,12 +14,12 @@ const MAX_TIMESTAMPS = 10;
  * Durations are in seconds.
  */
 const SCORE_WINDOWS = [
-    {duration: 3600 * 4, points: 100},
-    {duration: 3600 * 24, points: 80},
-    {duration: 3600 * 24 * 3, points: 60},
-    {duration: 3600 * 24 * 7, points: 40},
-    {duration: 3600 * 24 * 30, points: 20},
-    {duration: 3600 * 24 * 90, points: 10},
+    { duration: 3600 * 4, points: 100 },
+    { duration: 3600 * 24, points: 80 },
+    { duration: 3600 * 24 * 3, points: 60 },
+    { duration: 3600 * 24 * 7, points: 40 },
+    { duration: 3600 * 24 * 30, points: 20 },
+    { duration: 3600 * 24 * 90, points: 10 }
 ];
 
 /**
@@ -60,8 +60,7 @@ export const Statistic = {
 
         if (Array.isArray(data.timestamps)) {
             this.timestamps = data.timestamps.filter(
-                (timestamp) => typeof timestamp === 'number'
-                    && Number.isFinite(timestamp)
+                (timestamp) => typeof timestamp === 'number' && Number.isFinite(timestamp)
             );
         }
 
@@ -98,15 +97,13 @@ export const Statistic = {
         const now = time();
 
         const score = this.timestamps.reduce((total, timestamp) => {
-            const window = SCORE_WINDOWS.find(
-                (candidate) => timestamp > now - candidate.duration
-            );
+            const window = SCORE_WINDOWS.find((candidate) => timestamp > now - candidate.duration);
 
             return total + (window ? window.points : 0);
         }, 0);
 
-        return this.count * score / this.timestamps.length;
-    },
+        return (this.count * score) / this.timestamps.length;
+    }
 };
 
 export default Statistic;

@@ -15,7 +15,7 @@ import createTemplate from './template.js';
  */
 const ResultHandler = {
     filters,
-    sorters,
+    sorters
 };
 
 /**
@@ -50,9 +50,7 @@ const isApplePlatform = () => {
         return uaData.platform.toLowerCase().includes('mac');
     }
 
-    return /mac|iphone|ipad|ipod/i.test(
-        navigator.userAgent || navigator.platform || ''
-    );
+    return /mac|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.platform || '');
 };
 
 const QuickSwitcher = {
@@ -81,24 +79,25 @@ const QuickSwitcher = {
 
         this.modifierKey = isApplePlatform() ? 'metaKey' : 'ctrlKey';
 
-        options = Object.assign({
-            searchCallback: () => {},
-            selectCallback: () => {},
-            selectChildSearchCallback: () => {},
-            searchDelay: 1000,
-            hotKey: 'K',
-        }, options);
+        options = Object.assign(
+            {
+                searchCallback: () => {},
+                selectCallback: () => {},
+                selectChildSearchCallback: () => {},
+                searchDelay: 1000,
+                hotKey: 'K'
+            },
+            options
+        );
 
-        this.hotKey = options.hotKey
-            ? String(options.hotKey).toUpperCase()
-            : null;
+        this.hotKey = options.hotKey ? String(options.hotKey).toUpperCase() : null;
 
         this.rootOptions = {
             searchCallback: options.searchCallback,
             selectCallback: options.selectCallback,
             selectChildSearchCallback: options.selectChildSearchCallback,
             searchDelay: options.searchDelay,
-            trackChildrenAs: options.trackChildrenAs,
+            trackChildrenAs: options.trackChildrenAs
         };
 
         this.setOptions(this.rootOptions);
@@ -135,79 +134,101 @@ const QuickSwitcher = {
         this.noResults = find('.lstr-qswitcher-no-results');
         this.oopsResults = find('.lstr-qswitcher-oops-results');
 
-        find('.lstr-qswitcher-popup').addEventListener('submit', (ev) => {
-            ev.preventDefault();
-        }, {signal});
+        find('.lstr-qswitcher-popup').addEventListener(
+            'submit',
+            (ev) => {
+                ev.preventDefault();
+            },
+            { signal }
+        );
 
-        this.overlay.addEventListener('click', (ev) => {
-            this.closeSwitcher();
-            ev.preventDefault();
-        }, {signal});
+        this.overlay.addEventListener(
+            'click',
+            (ev) => {
+                this.closeSwitcher();
+                ev.preventDefault();
+            },
+            { signal }
+        );
 
         if (this.hotKey) {
-            document.addEventListener('keydown', (ev) => {
-                if (!ev.key) {
+            document.addEventListener(
+                'keydown',
+                (ev) => {
+                    if (!ev.key) {
+                        return;
+                    }
+
+                    if (ev[this.modifierKey] && ev.key.toUpperCase() === this.hotKey) {
+                        this.toggleSwitcher();
+                        ev.preventDefault();
+                    }
+                },
+                { signal }
+            );
+        }
+
+        document.addEventListener(
+            'keydown',
+            (ev) => {
+                if (!this.isOpen || !ev.key) {
                     return;
                 }
 
-                if (ev[this.modifierKey] && ev.key.toUpperCase() === this.hotKey) {
-                    this.toggleSwitcher();
+                if (ev.key === 'ArrowUp') {
+                    this.adjustSelectedIndex(-1);
+                    ev.preventDefault();
+                } else if (ev.key === 'ArrowDown') {
+                    this.adjustSelectedIndex(1);
+                    ev.preventDefault();
+                } else if (ev.key === 'Escape') {
+                    this.closeSwitcher();
+                    ev.preventDefault();
+                } else if (ev.key === 'Enter') {
+                    this.triggerSelect(this.selectedIndex, ev);
                     ev.preventDefault();
                 }
-            }, {signal});
-        }
+            },
+            { signal }
+        );
 
-        document.addEventListener('keydown', (ev) => {
-            if (!this.isOpen || !ev.key) {
-                return;
-            }
-
-            if (ev.key === 'ArrowUp') {
-                this.adjustSelectedIndex(-1);
-                ev.preventDefault();
-            } else if (ev.key === 'ArrowDown') {
-                this.adjustSelectedIndex(1);
-                ev.preventDefault();
-            } else if (ev.key === 'Escape') {
+        this.closeButton.addEventListener(
+            'click',
+            () => {
                 this.closeSwitcher();
-                ev.preventDefault();
-            } else if (ev.key === 'Enter') {
-                this.triggerSelect(this.selectedIndex, ev);
-                ev.preventDefault();
-            }
-        }, {signal});
+            },
+            { signal }
+        );
 
-        this.closeButton.addEventListener('click', () => {
-            this.closeSwitcher();
-        }, {signal});
+        this.search.addEventListener(
+            'keyup',
+            (ev) => {
+                const searchText = this.search.value;
 
-        this.search.addEventListener('keyup', (ev) => {
-            const searchText = this.search.value;
-
-            if (this.searchDelayTimeout) {
-                clearTimeout(this.searchDelayTimeout);
-                this.searchDelayTimeout = null;
-            }
-
-            if (searchText !== this.searchText) {
-                this.searchDelayTimeout = setTimeout(() => {
+                if (this.searchDelayTimeout) {
+                    clearTimeout(this.searchDelayTimeout);
                     this.searchDelayTimeout = null;
-                    this.selectIndex(null);
-                    this.searchText = searchText;
-                    this.renderList();
-                }, this.searchDelay);
-            } else if (ev.key === 'Backspace' && searchText === '') {
-                // Backspace on an empty box steps back out of a nested search.
-                if (this.popCallback()) {
-                    this.renderList();
                 }
-            }
-        }, {signal});
+
+                if (searchText !== this.searchText) {
+                    this.searchDelayTimeout = setTimeout(() => {
+                        this.searchDelayTimeout = null;
+                        this.selectIndex(null);
+                        this.searchText = searchText;
+                        this.renderList();
+                    }, this.searchDelay);
+                } else if (ev.key === 'Backspace' && searchText === '') {
+                    // Backspace on an empty box steps back out of a nested search.
+                    if (this.popCallback()) {
+                        this.renderList();
+                    }
+                }
+            },
+            { signal }
+        );
 
         const indexFromEvent = (ev) => {
-            const li = ev.target.closest
-                ? ev.target.closest('.lstr-qswitcher-results li')
-                : null;
+            const li = ev.target.closest ? ev.target.closest('.lstr-qswitcher-results li') : null;
 
             if (!li || li.dataset.lstrQswitcherIndex === undefined) {
                 return null;
@@ -218,30 +239,42 @@ const QuickSwitcher = {
             return Number.isNaN(index) ? null : index;
         };
 
-        this.domElement.addEventListener('mouseover', (ev) => {
-            const index = indexFromEvent(ev);
+        this.domElement.addEventListener(
+            'mouseover',
+            (ev) => {
+                const index = indexFromEvent(ev);
 
-            if (index !== null) {
-                this.selectIndex(index);
-            }
-        }, {signal});
+                if (index !== null) {
+                    this.selectIndex(index);
+                }
+            },
+            { signal }
+        );
 
-        this.domElement.addEventListener('touchstart', (ev) => {
-            const index = indexFromEvent(ev);
+        this.domElement.addEventListener(
+            'touchstart',
+            (ev) => {
+                const index = indexFromEvent(ev);
 
-            if (index !== null) {
-                this.selectIndex(index);
-                this.search.blur();
-            }
-        }, {signal, passive: true});
+                if (index !== null) {
+                    this.selectIndex(index);
+                    this.search.blur();
+                }
+            },
+            { signal, passive: true }
+        );
 
-        this.domElement.addEventListener('click', (ev) => {
-            const index = indexFromEvent(ev);
+        this.domElement.addEventListener(
+            'click',
+            (ev) => {
+                const index = indexFromEvent(ev);
 
-            if (index !== null) {
-                this.triggerSelect(index, ev);
-            }
-        }, {signal});
+                if (index !== null) {
+                    this.triggerSelect(index, ev);
+                }
+            },
+            { signal }
+        );
     },
 
     /**
@@ -262,10 +295,7 @@ const QuickSwitcher = {
         resultHandler.setError = this.setError.bind(this, this.searchId);
 
         try {
-            this.abortSearchCallback = this.searchCallback(
-                this.searchText,
-                resultHandler
-            );
+            this.abortSearchCallback = this.searchCallback(this.searchText, resultHandler);
         } catch (error) {
             // A throwing search callback should surface the error pane rather
             // than leaving the switcher stuck on "Loading...".
@@ -294,9 +324,7 @@ const QuickSwitcher = {
         }
 
         if (this.options.trackChildrenAs) {
-            items = sorters
-                .tracker(this.options.trackChildrenAs)
-                .sort(items, this.searchText);
+            items = sorters.tracker(this.options.trackChildrenAs).sort(items, this.searchText);
         }
 
         const ul = document.createElement('ul');
@@ -326,7 +354,7 @@ const QuickSwitcher = {
                 li.classList.add('lstr-qswitcher-result-category');
             }
 
-            this.valueObjects[index] = {index, value, li};
+            this.valueObjects[index] = { index, value, li };
         });
 
         this.results.innerHTML = '';
@@ -405,9 +433,7 @@ const QuickSwitcher = {
             }
         }
 
-        element.textContent = value === null || value === undefined
-            ? ''
-            : String(value);
+        element.textContent = value === null || value === undefined ? '' : String(value);
     },
 
     /**
@@ -430,9 +456,7 @@ const QuickSwitcher = {
      * @param {number|null} selectedIndex - Index to select, or null to clear.
      */
     selectIndex(selectedIndex) {
-        const previous = this.selectedIndex !== null
-            ? this.valueObjects[this.selectedIndex]
-            : null;
+        const previous = this.selectedIndex !== null ? this.valueObjects[this.selectedIndex] : null;
 
         if (previous) {
             previous.li.classList.remove('lstr-qswitcher-result-selected');
@@ -591,8 +615,7 @@ const QuickSwitcher = {
             }
 
             if (selectedValue.selectChildSearchCallback) {
-                this.selectChildSearchCallback
-                    = selectedValue.selectChildSearchCallback;
+                this.selectChildSearchCallback = selectedValue.selectChildSearchCallback;
             }
 
             if (!selectedResult.isSearchTextClearingPrevented()) {
@@ -632,7 +655,7 @@ const QuickSwitcher = {
             searchCallback: this.searchCallback,
             searchDelay: this.searchDelay,
             selectCallback: this.selectCallback,
-            selectChildSearchCallback: this.selectChildSearchCallback,
+            selectChildSearchCallback: this.selectChildSearchCallback
         });
     },
 
@@ -672,13 +695,7 @@ const QuickSwitcher = {
      * @param {HTMLElement} paneToUse - The pane to show.
      */
     usePane(paneToUse) {
-        [
-            this.results,
-            this.noSearchTerms,
-            this.noResults,
-            this.oopsResults,
-            this.loading,
-        ].forEach((pane) => {
+        [this.results, this.noSearchTerms, this.noResults, this.oopsResults, this.loading].forEach((pane) => {
             pane.style.display = 'none';
         });
 
@@ -731,25 +748,14 @@ const QuickSwitcher = {
         this.valueObjects = [];
         this.selectedIndex = null;
         this.isOpen = false;
-    },
+    }
 };
 
 /**
  * Create a quick switcher.
  *
- * @param {Object} [options] - Configuration options.
- * @param {Function} [options.searchCallback] - Produces results for a query.
- * @param {Function} [options.selectCallback] - Runs when a result is chosen.
- * @param {Function} [options.selectChildSearchCallback] - Runs when a nested
- *     search is entered.
- * @param {number} [options.searchDelay=1000] - Debounce in milliseconds.
- * @param {string|null} [options.hotKey='K'] - Key used with Cmd/Ctrl to open,
- *     or null to disable the hotkey entirely.
- * @param {string} [options.trackChildrenAs] - Tracker name enabling
- *     usage-based ranking of this search's results.
- * @param {HTMLElement} [options.parentDom=document.body] - Host element.
- * @returns {{open: Function, close: Function, toggle: Function,
- *     destroy: Function, isOpen: Function}} The switcher's public API.
+ * @param {import('./types.js').QuickSwitcherOptions} [options] - Configuration options.
+ * @returns {import('./types.js').QuickSwitcherInstance} The switcher's public API.
  */
 export const lstrQuickSwitcher = (options = {}) => {
     const parentDom = options.parentDom || document.body;
@@ -762,7 +768,7 @@ export const lstrQuickSwitcher = (options = {}) => {
         close: () => quickSwitcher.closeSwitcher(),
         toggle: () => quickSwitcher.toggleSwitcher(),
         destroy: () => quickSwitcher.destroy(),
-        isOpen: () => quickSwitcher.isOpen,
+        isOpen: () => quickSwitcher.isOpen
     };
 };
 

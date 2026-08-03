@@ -42,9 +42,7 @@ export const Selection = {
         Object.keys(data.searchKeys).forEach((storedKey) => {
             const searchKey = canonicalizeSearchKey(storedKey);
 
-            this.searchKeys[searchKey] = Statistic.create(
-                data.searchKeys[storedKey]
-            );
+            this.searchKeys[searchKey] = Statistic.create(data.searchKeys[storedKey]);
         });
     },
 
@@ -85,7 +83,7 @@ export const Selection = {
         }
 
         return this.searchKeys[searchKey].score();
-    },
+    }
 };
 
 export default Selection;

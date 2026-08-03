@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Statistic from '../src/tracker/statistic.js';
 
@@ -101,12 +101,10 @@ describe('Statistic', () => {
         expect(() => Statistic.create({})).not.toThrow();
         expect(Statistic.create({}).score()).toBe(0);
 
-        expect(() => Statistic.create({timestamps: 'nope', count: 'x'}))
-            .not.toThrow();
-        expect(Statistic.create({timestamps: 'nope', count: 'x'}).score())
-            .toBe(0);
+        expect(() => Statistic.create({ timestamps: 'nope', count: 'x' })).not.toThrow();
+        expect(Statistic.create({ timestamps: 'nope', count: 'x' }).score()).toBe(0);
 
-        const partial = Statistic.create({timestamps: [null, 'a'], count: 3});
+        const partial = Statistic.create({ timestamps: [null, 'a'], count: 3 });
         expect(partial.score()).toBe(0);
     });
 });

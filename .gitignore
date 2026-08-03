@@ -13,3 +13,6 @@ CLAUDE.local.md
 # OS / editor cruft
 .DS_Store
 *.log
+
+# Generated declarations (npm run build:types)
+types/

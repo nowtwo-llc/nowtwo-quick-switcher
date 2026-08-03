@@ -29,7 +29,8 @@ stay `"public"` or publishing fails.
 npm test               # Vitest (jsdom)
 npm run test:watch     # Vitest in watch mode
 npm run test:coverage  # Coverage report
-npm run lint           # ESLint 9 flat config
+npm run lint           # oxlint + Prettier + Stylelint, with fixes
+npm run lint:check     # same, no fixes — what CI runs
 npm run build          # clean + JS + CSS + type declarations into dist/
 npm run build:js       # Vite library build (ESM + UMD)
 npm run build:css      # Sass -> dist/quick-switcher.min.css
@@ -39,6 +40,31 @@ npm run build:demo     # Build the demo into demo/dist (deployed to Pages)
 ```
 
 Run a single test file with `npx vitest run test/tracker.test.js`.
+
+## Types
+
+The source is JavaScript; the published declarations in `types/` are **generated** from
+JSDoc by `npm run build:types`, and `types/` is gitignored build output.
+
+The whole public type surface lives in **`src/types.js`** as `@typedef` / `@callback`
+blocks — a module with no runtime content. Other files reference it as
+`import('./types.js').TypeName`.
+
+This is load-bearing and easy to undo by accident. These declarations used to be
+hand-maintained precisely because generation emitted `Function` for every callback:
+the JSDoc said `@param {Function} [options.searchCallback]`, and `tsc` faithfully
+emitted that. **Do not write bare `{Object}` or `{Function}` in JSDoc on the public
+API** — name a typedef instead, or the published types silently degrade to something
+that tells consumers nothing.
+
+`test/types.test-d.ts` is the guard: it exercises the declarations against real usage
+and `npm run typecheck` fails if they stop describing it. It is never run and never
+published.
+
+`src/index.js` re-exports every public type as a `@typedef` alias so consumers can
+`import type { SearchCallback } from '@nowtwo-llc/quick-switcher'`, and casts the
+default export to `QuickSwitcherFactory` — inference alone reports a plain function,
+losing the `filters`/`sorters` helpers assigned onto it at runtime.
 
 ## Architecture
 

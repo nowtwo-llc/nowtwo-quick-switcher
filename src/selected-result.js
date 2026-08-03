@@ -45,10 +45,7 @@ export const SelectedResult = {
             return;
         }
 
-        factories.tracker(this.parent.trackChildrenAs).trackSelection(
-            this.selectedValue,
-            this.searchText
-        );
+        factories.tracker(this.parent.trackChildrenAs).trackSelection(this.selectedValue, this.searchText);
     },
 
     /**
@@ -65,7 +62,7 @@ export const SelectedResult = {
      */
     isSearchTextClearingPrevented() {
         return this.searchTextClearingPrevented;
-    },
+    }
 };
 
 export default SelectedResult;

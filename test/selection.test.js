@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Selection from '../src/tracker/selection.js';
 
@@ -74,9 +74,7 @@ describe('Selection', () => {
         const original = createSelection();
         original.increment('blue');
 
-        const restored = createSelection(
-            JSON.parse(JSON.stringify(original))
-        );
+        const restored = createSelection(JSON.parse(JSON.stringify(original)));
 
         expect(restored.score('blue')).toBe(100);
     });
@@ -85,13 +83,13 @@ describe('Selection', () => {
         // Data written before keys were normalized can carry mixed case; the
         // statistic must still be recovered rather than silently reset.
         const restored = createSelection({
-            overall: {timestamps: [], count: 0},
+            overall: { timestamps: [], count: 0 },
             searchKeys: {
-                'BLUE': {
+                BLUE: {
                     timestamps: [Math.floor(NOW.getTime() / 1000)],
-                    count: 1,
-                },
-            },
+                    count: 1
+                }
+            }
         });
 
         expect(restored.score('blue')).toBe(100);
@@ -99,8 +97,8 @@ describe('Selection', () => {
 
     it('survives malformed persisted data', () => {
         expect(() => createSelection({})).not.toThrow();
-        expect(() => createSelection({searchKeys: null})).not.toThrow();
-        expect(() => createSelection({searchKeys: 'nope'})).not.toThrow();
+        expect(() => createSelection({ searchKeys: null })).not.toThrow();
+        expect(() => createSelection({ searchKeys: 'nope' })).not.toThrow();
         expect(createSelection({}).score('blue')).toBe(0);
     });
 });

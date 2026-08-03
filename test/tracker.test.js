@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Tracker from '../src/tracker.js';
 import factories from '../src/factories.js';
@@ -38,8 +38,8 @@ describe('Tracker', () => {
 
     it('ranks a previously selected item above an unselected one', () => {
         const tracker = createTracker('main');
-        const apple = {text: 'Apple', trackerId: 'apple'};
-        const banana = {text: 'Banana', trackerId: 'banana'};
+        const apple = { text: 'Apple', trackerId: 'apple' };
+        const banana = { text: 'Banana', trackerId: 'banana' };
 
         tracker.trackSelection(banana, 'fruit');
 
@@ -48,25 +48,25 @@ describe('Tracker', () => {
 
     it('preserves the original order when nothing is tracked', () => {
         const tracker = createTracker('main');
-        const items = [{trackerId: 'a'}, {trackerId: 'b'}, {trackerId: 'c'}];
+        const items = [{ trackerId: 'a' }, { trackerId: 'b' }, { trackerId: 'c' }];
 
         expect(tracker.sort(items, '')).toEqual(items);
     });
 
     it('honors trackerStaticSort ahead of usage score', () => {
         const tracker = createTracker('main');
-        const pinned = {trackerId: 'pinned', trackerStaticSort: -1};
-        const popular = {trackerId: 'popular'};
+        const pinned = { trackerId: 'pinned', trackerStaticSort: -1 };
+        const popular = { trackerId: 'popular' };
 
         tracker.trackSelection(popular, 'x');
 
         expect(tracker.sort([popular, pinned], 'x')).toEqual([pinned, popular]);
     });
 
-    it('does not mutate the caller\'s array or items', () => {
+    it("does not mutate the caller's array or items", () => {
         const tracker = createTracker('main');
-        const apple = {text: 'Apple', trackerId: 'apple'};
-        const banana = {text: 'Banana', trackerId: 'banana'};
+        const apple = { text: 'Apple', trackerId: 'apple' };
+        const banana = { text: 'Banana', trackerId: 'banana' };
         const items = [apple, banana];
 
         tracker.trackSelection(banana, 'fruit');
@@ -81,27 +81,27 @@ describe('Tracker', () => {
     it('ignores items without a trackerId', () => {
         const tracker = createTracker('main');
 
-        expect(() => tracker.trackSelection({text: 'no id'}, 'x')).not.toThrow();
-        expect(tracker.scoreSelection({text: 'no id'}, 'x')).toBe(0);
+        expect(() => tracker.trackSelection({ text: 'no id' }, 'x')).not.toThrow();
+        expect(tracker.scoreSelection({ text: 'no id' }, 'x')).toBe(0);
         expect(tracker.scoreSelection('a plain string', 'x')).toBe(0);
     });
 
     it('persists selections across instances', () => {
         const first = createTracker('main');
-        first.trackSelection({trackerId: 'apple'}, 'fruit');
+        first.trackSelection({ trackerId: 'apple' }, 'fruit');
 
         const second = createTracker('main');
 
-        expect(second.scoreSelection({trackerId: 'apple'}, 'fruit')).toBe(100);
+        expect(second.scoreSelection({ trackerId: 'apple' }, 'fruit')).toBe(100);
     });
 
     it('keeps separate trackers isolated', () => {
         const main = createTracker('main');
-        main.trackSelection({trackerId: 'apple'}, 'fruit');
+        main.trackSelection({ trackerId: 'apple' }, 'fruit');
 
         const other = createTracker('other');
 
-        expect(other.scoreSelection({trackerId: 'apple'}, 'fruit')).toBe(0);
+        expect(other.scoreSelection({ trackerId: 'apple' }, 'fruit')).toBe(0);
     });
 
     it('starts fresh when stored data is corrupt', () => {
@@ -116,25 +116,24 @@ describe('Tracker', () => {
     });
 
     it('keeps working when localStorage writes throw', () => {
-        const setItem = vi.spyOn(Storage.prototype, 'setItem')
-            .mockImplementation(() => {
-                throw new Error('QuotaExceededError');
-            });
+        const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new Error('QuotaExceededError');
+        });
 
         const tracker = createTracker('main');
 
-        expect(() => tracker.trackSelection({trackerId: 'a'}, 'x')).not.toThrow();
-        expect(tracker.scoreSelection({trackerId: 'a'}, 'x')).toBe(100);
+        expect(() => tracker.trackSelection({ trackerId: 'a' }, 'x')).not.toThrow();
+        expect(tracker.scoreSelection({ trackerId: 'a' }, 'x')).toBe(100);
 
         setItem.mockRestore();
     });
 
     it('forgets everything on reset', () => {
         const tracker = createTracker('main');
-        tracker.trackSelection({trackerId: 'apple'}, 'fruit');
+        tracker.trackSelection({ trackerId: 'apple' }, 'fruit');
         tracker.reset();
 
-        expect(tracker.scoreSelection({trackerId: 'apple'}, 'fruit')).toBe(0);
+        expect(tracker.scoreSelection({ trackerId: 'apple' }, 'fruit')).toBe(0);
         expect(createTracker('main').selections).toEqual({});
     });
 });

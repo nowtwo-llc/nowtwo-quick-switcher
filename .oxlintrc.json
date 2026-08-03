@@ -1,0 +1,19 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "ignorePatterns": ["dist/", "demo/dist/", "coverage/", "node_modules/"],
+    "env": { "browser": true, "es2022": true },
+    "categories": { "correctness": "error" },
+    "rules": {
+        "eqeqeq": ["error", "always"],
+        "no-console": ["warn", { "allow": ["warn", "error"] }],
+        "no-var": "error",
+        "prefer-const": "error"
+    },
+    "overrides": [
+        {
+            "files": ["test/**", "scripts/**", "*.config.js", "*.config.mjs", "demo/**"],
+            "env": { "node": true, "browser": true },
+            "rules": { "no-console": "off" }
+        }
+    ]
+}

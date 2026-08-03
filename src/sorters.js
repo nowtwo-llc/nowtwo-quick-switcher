@@ -16,7 +16,7 @@ export const sorters = {
      */
     tracker(trackerName) {
         return factories.tracker(trackerName);
-    },
+    }
 };
 
 export default sorters;

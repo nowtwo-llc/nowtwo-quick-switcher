@@ -1,0 +1,21 @@
+// Generates the published declarations from the source JSDoc.
+//
+// The type surface lives in src/types.js as @typedef/@callback blocks. Before
+// that existed, generation emitted `Function` for every callback, which is why
+// these declarations used to be hand-maintained — see git history.
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "lib": ["ES2020", "DOM"],
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "outDir": "./types",
+        "rootDir": "./src",
+        "skipLibCheck": true,
+        "strict": true,
+        "target": "ES2020"
+    },
+    "include": ["./src/**/*.js"]
+}

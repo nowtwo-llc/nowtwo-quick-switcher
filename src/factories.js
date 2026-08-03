@@ -37,7 +37,7 @@ export const factories = {
         Object.keys(loadedTrackers).forEach((key) => {
             delete loadedTrackers[key];
         });
-    },
+    }
 };
 
 export default factories;

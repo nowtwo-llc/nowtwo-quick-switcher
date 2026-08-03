@@ -1,6 +1,6 @@
-import {beforeAll, describe, expect, it} from 'vitest';
-import {compile} from 'sass';
-import {resolve} from 'node:path';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { compile } from 'sass';
+import { resolve } from 'node:path';
 
 import lstrQuickSwitcher from '../src/quick-switcher.js';
 
@@ -18,14 +18,12 @@ describe('stylesheet', () => {
         const src = resolve(process.cwd(), 'src');
 
         css = compile(resolve(src, 'quick-switcher.scss'), {
-            loadPaths: [src],
+            loadPaths: [src]
         }).css;
     });
 
     it('sets an explicit text color on the container', () => {
-        expect(css).toMatch(
-            /\.lstr-qswitcher-container\s*\{[^}]*\bcolor:/i
-        );
+        expect(css).toMatch(/\.lstr-qswitcher-container\s*\{[^}]*\bcolor:/i);
     });
 
     it('keeps result text readable under a dark-themed host page', () => {
@@ -36,7 +34,7 @@ describe('stylesheet', () => {
             searchDelay: 0,
             searchCallback: (searchText, resultHandler) => {
                 resultHandler.setResults(['Dashboard']);
-            },
+            }
         });
         switcher.open();
 
@@ -57,9 +55,9 @@ describe('stylesheet', () => {
     });
 
     it('routes every color through an overridable custom property', () => {
-        const bare = [...css.matchAll(
-            /^\s*(?:color|background-color):\s*(#[0-9a-f]{3,6}|rgba?\([^)]*\));/gim
-        )].map((match) => match[0].trim());
+        const bare = [...css.matchAll(/^\s*(?:color|background-color):\s*(#[0-9a-f]{3,6}|rgba?\([^)]*\));/gim)].map(
+            (match) => match[0].trim()
+        );
 
         expect(bare).toEqual([]);
     });
@@ -72,7 +70,7 @@ describe('stylesheet', () => {
             '--lstr-qswitcher-surface',
             '--lstr-qswitcher-accent',
             '--lstr-qswitcher-selected-bg',
-            '--lstr-qswitcher-selected-fg',
+            '--lstr-qswitcher-selected-fg'
         ].forEach((variable) => {
             expect(css).toContain(variable);
         });

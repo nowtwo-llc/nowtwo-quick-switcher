@@ -6,7 +6,7 @@
  */
 
 import Selection from './tracker/selection.js';
-import {readJson, writeJson} from './storage.js';
+import { readJson, writeJson } from './storage.js';
 
 /** Prefix for every tracker's localStorage key. */
 const STORAGE_PREFIX = 'qswitcher-tracker-';
@@ -95,13 +95,15 @@ export const Tracker = {
             item,
             index,
             score: this.scoreSelection(item, searchText),
-            sort: (item && item.trackerStaticSort) || 0,
+            sort: (item && item.trackerStaticSort) || 0
         }));
 
         decorated.sort((a, b) => {
-            return compareLowerFirst(a.sort, b.sort)
-                || compareGreaterFirst(a.score, b.score)
-                || compareLowerFirst(a.index, b.index);
+            return (
+                compareLowerFirst(a.sort, b.sort) ||
+                compareGreaterFirst(a.score, b.score) ||
+                compareLowerFirst(a.index, b.index)
+            );
         });
 
         return decorated.map((entry) => entry.item);
@@ -143,7 +145,7 @@ export const Tracker = {
     reset() {
         this.selections = {};
         this.save();
-    },
+    }
 };
 
 export default Tracker;

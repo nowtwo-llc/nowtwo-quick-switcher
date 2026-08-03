@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import lstrQuickSwitcher from '../src/index.js';
 
@@ -12,10 +12,9 @@ describe('package entry point', () => {
     });
 
     it('exposes the documented public API', () => {
-        const switcher = lstrQuickSwitcher({searchDelay: 0});
+        const switcher = lstrQuickSwitcher({ searchDelay: 0 });
 
-        expect(Object.keys(switcher).sort())
-            .toEqual(['close', 'destroy', 'isOpen', 'open', 'toggle']);
+        expect(Object.keys(switcher).sort()).toEqual(['close', 'destroy', 'isOpen', 'open', 'toggle']);
 
         switcher.destroy();
     });

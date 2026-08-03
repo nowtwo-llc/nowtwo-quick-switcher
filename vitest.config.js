@@ -1,4 +1,4 @@
-import {defineConfig} from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     test: {
@@ -27,8 +27,8 @@ export default defineConfig({
                 statements: 94,
                 branches: 86,
                 functions: 94,
-                lines: 94,
-            },
-        },
-    },
+                lines: 94
+            }
+        }
+    }
 });

@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import lstrQuickSwitcher from '../src/quick-switcher.js';
 import factories from '../src/factories.js';
@@ -13,7 +13,7 @@ let instances = [];
  * @returns {Object} The switcher's public API.
  */
 const createSwitcher = (options = {}) => {
-    const switcher = lstrQuickSwitcher({searchDelay: 0, ...options});
+    const switcher = lstrQuickSwitcher({ searchDelay: 0, ...options });
     instances.push(switcher);
 
     return switcher;
@@ -36,9 +36,7 @@ const root = () => document.body.querySelector('.lstr-qswitcher:last-of-type');
 const input = () => root().querySelector('.lstr-qswitcher-search');
 
 /** @returns {HTMLElement[]} The rendered result items. */
-const items = () => Array.from(
-    root().querySelectorAll('.lstr-qswitcher-results li')
-);
+const items = () => Array.from(root().querySelectorAll('.lstr-qswitcher-results li'));
 
 /** @returns {HTMLElement} The selected result item. */
 const selected = () => root().querySelector('.lstr-qswitcher-result-selected');
@@ -51,9 +49,7 @@ const selected = () => root().querySelector('.lstr-qswitcher-result-selected');
  */
 const type = (text, key = 'a') => {
     input().value = text;
-    input().dispatchEvent(
-        new KeyboardEvent('keyup', {key, bubbles: true})
-    );
+    input().dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
     vi.advanceTimersByTime(50);
 };
 
@@ -64,9 +60,7 @@ const type = (text, key = 'a') => {
  * @param {Object} [modifiers] - Extra event properties.
  */
 const press = (key, modifiers = {}) => {
-    document.dispatchEvent(
-        new KeyboardEvent('keydown', {key, bubbles: true, ...modifiers})
-    );
+    document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
 };
 
 describe('quick switcher', () => {
@@ -89,26 +83,24 @@ describe('quick switcher', () => {
             createSwitcher();
 
             expect(root()).not.toBeNull();
-            expect(root().querySelector('.lstr-qswitcher-container').style.display)
-                .not.toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-container').style.display).not.toBe('block');
         });
 
         it('opens, closes, and reports its state', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
             expect(switcher.isOpen()).toBe(false);
 
             switcher.open();
             expect(switcher.isOpen()).toBe(true);
-            expect(root().querySelector('.lstr-qswitcher-container').style.display)
-                .toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-container').style.display).toBe('block');
 
             switcher.close();
             expect(switcher.isOpen()).toBe(false);
         });
 
         it('toggles', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
             switcher.toggle();
             expect(switcher.isOpen()).toBe(true);
@@ -118,37 +110,34 @@ describe('quick switcher', () => {
         });
 
         it('locks page scrolling only while open', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
             switcher.open();
-            expect(document.body.classList.contains('lstr-qswitcher-noscroll'))
-                .toBe(true);
+            expect(document.body.classList.contains('lstr-qswitcher-noscroll')).toBe(true);
 
             switcher.close();
-            expect(document.body.classList.contains('lstr-qswitcher-noscroll'))
-                .toBe(false);
+            expect(document.body.classList.contains('lstr-qswitcher-noscroll')).toBe(false);
         });
 
         it('does not unlock scrolling when opened twice', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
             switcher.open();
             switcher.open();
 
-            expect(document.body.classList.contains('lstr-qswitcher-noscroll'))
-                .toBe(true);
+            expect(document.body.classList.contains('lstr-qswitcher-noscroll')).toBe(true);
         });
 
         it('opens on the Ctrl+K hotkey', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
-            press('k', {ctrlKey: true});
+            press('k', { ctrlKey: true });
 
             expect(switcher.isOpen()).toBe(true);
         });
 
         it('ignores the hotkey without its modifier', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
 
             press('k');
 
@@ -158,16 +147,16 @@ describe('quick switcher', () => {
         it('binds no hotkey when hotKey is null', () => {
             const switcher = createSwitcher({
                 searchCallback: staticSearch([]),
-                hotKey: null,
+                hotKey: null
             });
 
-            press('k', {ctrlKey: true});
+            press('k', { ctrlKey: true });
 
             expect(switcher.isOpen()).toBe(false);
         });
 
         it('closes on Escape', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.open();
 
             press('Escape');
@@ -176,7 +165,7 @@ describe('quick switcher', () => {
         });
 
         it('closes when the overlay is clicked', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.open();
 
             root().querySelector('.lstr-qswitcher-overlay').click();
@@ -190,7 +179,7 @@ describe('quick switcher', () => {
 
             createSwitcher({
                 searchCallback: staticSearch([]),
-                parentDom: host,
+                parentDom: host
             });
 
             expect(host.querySelector('.lstr-qswitcher')).not.toBeNull();
@@ -200,7 +189,7 @@ describe('quick switcher', () => {
     describe('results rendering', () => {
         it('renders plain string results', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch(['Alpha', 'Beta']),
+                searchCallback: staticSearch(['Alpha', 'Beta'])
             });
             switcher.open();
 
@@ -211,7 +200,7 @@ describe('quick switcher', () => {
         it('renders the text property as plain text, not markup', () => {
             const payload = '<img src=x onerror="window.__xss = true">';
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{text: payload}]),
+                searchCallback: staticSearch([{ text: payload }])
             });
             switcher.open();
 
@@ -222,7 +211,7 @@ describe('quick switcher', () => {
 
         it('renders the html property as markup', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{html: '<em>Emphasis</em>'}]),
+                searchCallback: staticSearch([{ html: '<em>Emphasis</em>' }])
             });
             switcher.open();
 
@@ -231,7 +220,7 @@ describe('quick switcher', () => {
 
         it('resolves text and html supplied as functions', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{text: () => 'Lazy'}]),
+                searchCallback: staticSearch([{ text: () => 'Lazy' }])
             });
             switcher.open();
 
@@ -240,81 +229,68 @@ describe('quick switcher', () => {
 
         it('renders descriptions', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([
-                    {text: 'Alpha', description: 'First letter'},
-                ]),
+                searchCallback: staticSearch([{ text: 'Alpha', description: 'First letter' }])
             });
             switcher.open();
 
-            const description = root()
-                .querySelector('.lstr-qswitcher-result-description');
+            const description = root().querySelector('.lstr-qswitcher-result-description');
 
             expect(description.textContent.trim()).toBe('First letter');
         });
 
         it('escapes descriptions too', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([
-                    {text: 'Alpha', description: '<b>bold</b>'},
-                ]),
+                searchCallback: staticSearch([{ text: 'Alpha', description: '<b>bold</b>' }])
             });
             switcher.open();
 
-            expect(root().querySelector('.lstr-qswitcher-result-description b'))
-                .toBeNull();
+            expect(root().querySelector('.lstr-qswitcher-result-description b')).toBeNull();
         });
 
         it('flags nested searches with a category class', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([
-                    {text: 'Colors', searchCallback: staticSearch([])},
-                ]),
+                searchCallback: staticSearch([{ text: 'Colors', searchCallback: staticSearch([]) }])
             });
             switcher.open();
 
-            expect(items()[0].classList.contains('lstr-qswitcher-result-category'))
-                .toBe(true);
+            expect(items()[0].classList.contains('lstr-qswitcher-result-category')).toBe(true);
         });
 
         it('shows the no-terms pane for an empty search with no results', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.open();
 
-            expect(root().querySelector('.lstr-qswitcher-no-terms').style.display)
-                .toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-no-terms').style.display).toBe('block');
         });
 
         it('shows the no-results pane once a term is entered', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.open();
             type('zzz');
 
-            expect(root().querySelector('.lstr-qswitcher-no-results').style.display)
-                .toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-no-results').style.display).toBe('block');
         });
 
         it('shows the error pane when setError is called', () => {
             const switcher = createSwitcher({
                 searchCallback: (searchText, resultHandler) => {
                     resultHandler.setError();
-                },
+                }
             });
             switcher.open();
 
-            expect(root().querySelector('.lstr-qswitcher-oops-results').style.display)
-                .toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-oops-results').style.display).toBe('block');
         });
 
         it('shows the error pane when the search callback throws', () => {
             const switcher = createSwitcher({
                 searchCallback: () => {
                     throw new Error('search exploded');
-                },
+                }
             });
 
             expect(() => switcher.open()).not.toThrow();
-            expect(root().querySelector('.lstr-qswitcher-oops-results').style.display)
-                .toBe('block');
+            expect(root().querySelector('.lstr-qswitcher-oops-results').style.display).toBe('block');
         });
 
         it('discards results from a superseded search', () => {
@@ -326,7 +302,7 @@ describe('quick switcher', () => {
                         return;
                     }
                     resultHandler.setResults(['Fresh']);
-                },
+                }
             });
 
             switcher.open();
@@ -342,15 +318,12 @@ describe('quick switcher', () => {
             const searchCallback = vi.fn((searchText, resultHandler) => {
                 resultHandler.setResults([]);
             });
-            const switcher = createSwitcher({searchCallback});
+            const switcher = createSwitcher({ searchCallback });
             switcher.open();
 
             type('hello');
 
-            expect(searchCallback).toHaveBeenLastCalledWith(
-                'hello',
-                expect.anything()
-            );
+            expect(searchCallback).toHaveBeenLastCalledWith('hello', expect.anything());
         });
 
         it('exposes filters and sorters on the result handler', () => {
@@ -359,7 +332,7 @@ describe('quick switcher', () => {
                 searchCallback: (searchText, resultHandler) => {
                     handler = resultHandler;
                     resultHandler.setResults([]);
-                },
+                }
             });
             switcher.open();
 
@@ -371,13 +344,13 @@ describe('quick switcher', () => {
             const searchCallback = vi.fn((searchText, resultHandler) => {
                 resultHandler.setResults([]);
             });
-            const switcher = createSwitcher({searchCallback, searchDelay: 500});
+            const switcher = createSwitcher({ searchCallback, searchDelay: 500 });
             switcher.open();
 
             searchCallback.mockClear();
 
             input().value = 'abc';
-            input().dispatchEvent(new KeyboardEvent('keyup', {key: 'c'}));
+            input().dispatchEvent(new KeyboardEvent('keyup', { key: 'c' }));
 
             vi.advanceTimersByTime(499);
             expect(searchCallback).not.toHaveBeenCalled();
@@ -395,7 +368,7 @@ describe('quick switcher', () => {
          */
         const openThree = () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch(['One', 'Two', 'Three']),
+                searchCallback: staticSearch(['One', 'Two', 'Three'])
             });
             switcher.open();
 
@@ -444,7 +417,7 @@ describe('quick switcher', () => {
         });
 
         it('ignores navigation keys while closed', () => {
-            createSwitcher({searchCallback: staticSearch(['One'])});
+            createSwitcher({ searchCallback: staticSearch(['One']) });
 
             expect(() => press('ArrowDown')).not.toThrow();
         });
@@ -452,20 +425,18 @@ describe('quick switcher', () => {
         it('tracks the selection with aria-activedescendant', () => {
             openThree();
 
-            expect(input().getAttribute('aria-activedescendant'))
-                .toBe(selected().id);
+            expect(input().getAttribute('aria-activedescendant')).toBe(selected().id);
             expect(selected().getAttribute('aria-selected')).toBe('true');
         });
 
         it('gives each instance distinct element ids', () => {
-            createSwitcher({searchCallback: staticSearch([])});
-            const firstId = document.body
-                .querySelector('.lstr-qswitcher .lstr-qswitcher-search').id;
+            createSwitcher({ searchCallback: staticSearch([]) });
+            const firstId = document.body.querySelector('.lstr-qswitcher .lstr-qswitcher-search').id;
 
-            createSwitcher({searchCallback: staticSearch([])});
-            const ids = Array.from(
-                document.body.querySelectorAll('.lstr-qswitcher-search')
-            ).map((element) => element.id);
+            createSwitcher({ searchCallback: staticSearch([]) });
+            const ids = Array.from(document.body.querySelectorAll('.lstr-qswitcher-search')).map(
+                (element) => element.id
+            );
 
             expect(new Set(ids).size).toBe(2);
             expect(ids[0]).toBe(firstId);
@@ -473,17 +444,17 @@ describe('quick switcher', () => {
 
         it('scrolls the results pane to reveal an off-screen selection', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch(['One', 'Two']),
+                searchCallback: staticSearch(['One', 'Two'])
             });
             switcher.open();
 
             // jsdom reports zero for every layout property, so geometry has
             // to be stubbed for this assertion to mean anything.
             const results = root().querySelector('.lstr-qswitcher-results');
-            Object.defineProperty(results, 'offsetHeight', {value: 40});
+            Object.defineProperty(results, 'offsetHeight', { value: 40 });
             items().forEach((li, index) => {
-                Object.defineProperty(li, 'offsetTop', {value: index * 30});
-                Object.defineProperty(li, 'offsetHeight', {value: 30});
+                Object.defineProperty(li, 'offsetTop', { value: index * 30 });
+                Object.defineProperty(li, 'offsetHeight', { value: 30 });
             });
 
             press('ArrowDown');
@@ -497,7 +468,7 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One', 'Two']),
-                selectCallback,
+                selectCallback
             });
             switcher.open();
 
@@ -511,7 +482,7 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One', 'Two']),
-                selectCallback,
+                selectCallback
             });
             switcher.open();
 
@@ -524,11 +495,11 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One', 'Two']),
-                selectCallback,
+                selectCallback
             });
             switcher.open();
 
-            items()[1].dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+            items()[1].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
             press('Enter');
 
             expect(selectCallback.mock.calls[0][0].selectedValue).toBe('Two');
@@ -537,7 +508,7 @@ describe('quick switcher', () => {
         it('closes after a selection', () => {
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One']),
-                selectCallback: () => {},
+                selectCallback: () => {}
             });
             switcher.open();
 
@@ -549,7 +520,7 @@ describe('quick switcher', () => {
         it('stays open when selectCallback returns false', () => {
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One']),
-                selectCallback: () => false,
+                selectCallback: () => false
             });
             switcher.open();
 
@@ -562,7 +533,7 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             const switcher = createSwitcher({
                 searchCallback: staticSearch(['One']),
-                selectCallback,
+                selectCallback
             });
             switcher.open();
             type('on');
@@ -576,7 +547,7 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             const switcher = createSwitcher({
                 searchCallback: staticSearch([]),
-                selectCallback,
+                selectCallback
             });
             switcher.open();
 
@@ -598,11 +569,11 @@ describe('quick switcher', () => {
                 text: 'Colors',
                 breadcrumbText: 'Colors',
                 searchCallback: staticSearch(['Red', 'Blue']),
-                ...overrides,
+                ...overrides
             };
 
             const switcher = createSwitcher({
-                searchCallback: staticSearch([child, 'Other']),
+                searchCallback: staticSearch([child, 'Other'])
             });
             switcher.open();
 
@@ -614,8 +585,7 @@ describe('quick switcher', () => {
 
             press('Enter');
 
-            expect(items().map((li) => li.textContent.trim()))
-                .toEqual(['Red', 'Blue']);
+            expect(items().map((li) => li.textContent.trim())).toEqual(['Red', 'Blue']);
         });
 
         it('renders a breadcrumb for the nested search', () => {
@@ -623,10 +593,8 @@ describe('quick switcher', () => {
 
             press('Enter');
 
-            expect(root().querySelector('.lstr-qswitcher-breadcrumb').textContent)
-                .toContain('Colors');
-            expect(root().classList.contains('lstr-qswitcher-subsearch'))
-                .toBe(true);
+            expect(root().querySelector('.lstr-qswitcher-breadcrumb').textContent).toContain('Colors');
+            expect(root().classList.contains('lstr-qswitcher-subsearch')).toBe(true);
         });
 
         it('clears the search text when drilling in', () => {
@@ -646,14 +614,16 @@ describe('quick switcher', () => {
             // Re-create with a callback that prevents clearing.
             document.body.innerHTML = '';
             const nested = createSwitcher({
-                searchCallback: staticSearch([{
-                    text: 'Colors',
-                    breadcrumbText: 'Colors',
-                    searchCallback: staticSearch(['Red']),
-                }]),
+                searchCallback: staticSearch([
+                    {
+                        text: 'Colors',
+                        breadcrumbText: 'Colors',
+                        searchCallback: staticSearch(['Red'])
+                    }
+                ]),
                 selectChildSearchCallback: (selectedResult) => {
                     selectedResult.preventSearchTextClearing();
-                },
+                }
             });
             nested.open();
             type('col');
@@ -666,12 +636,14 @@ describe('quick switcher', () => {
         it('blocks the drill-down when the child callback returns false', () => {
             document.body.innerHTML = '';
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{
-                    text: 'Colors',
-                    breadcrumbText: 'Colors',
-                    searchCallback: staticSearch(['Red']),
-                }]),
-                selectChildSearchCallback: () => false,
+                searchCallback: staticSearch([
+                    {
+                        text: 'Colors',
+                        breadcrumbText: 'Colors',
+                        searchCallback: staticSearch(['Red'])
+                    }
+                ]),
+                selectChildSearchCallback: () => false
             });
             switcher.open();
 
@@ -687,10 +659,8 @@ describe('quick switcher', () => {
 
             type('', 'Backspace');
 
-            expect(items().map((li) => li.textContent.trim()))
-                .toEqual(['Colors', 'Other']);
-            expect(root().classList.contains('lstr-qswitcher-subsearch'))
-                .toBe(false);
+            expect(items().map((li) => li.textContent.trim())).toEqual(['Colors', 'Other']);
+            expect(root().classList.contains('lstr-qswitcher-subsearch')).toBe(false);
         });
 
         it('returns to the root search when reopened', () => {
@@ -700,20 +670,21 @@ describe('quick switcher', () => {
             switcher.close();
             switcher.open();
 
-            expect(items().map((li) => li.textContent.trim()))
-                .toEqual(['Colors', 'Other']);
+            expect(items().map((li) => li.textContent.trim())).toEqual(['Colors', 'Other']);
         });
 
         it('inherits selectCallback into a nested search that omits it', () => {
             const selectCallback = vi.fn();
             document.body.innerHTML = '';
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{
-                    text: 'Colors',
-                    breadcrumbText: 'Colors',
-                    searchCallback: staticSearch(['Red']),
-                }]),
-                selectCallback,
+                searchCallback: staticSearch([
+                    {
+                        text: 'Colors',
+                        breadcrumbText: 'Colors',
+                        searchCallback: staticSearch(['Red'])
+                    }
+                ]),
+                selectCallback
             });
             switcher.open();
 
@@ -731,16 +702,20 @@ describe('quick switcher', () => {
             // The middle search declares no selectCallback of its own, so it
             // relies on inheritance both going in and coming back out.
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{
-                    text: 'Level one',
-                    breadcrumbText: 'One',
-                    searchCallback: staticSearch([{
-                        text: 'Level two',
-                        breadcrumbText: 'Two',
-                        searchCallback: staticSearch(['Leaf']),
-                    }]),
-                }]),
-                selectCallback,
+                searchCallback: staticSearch([
+                    {
+                        text: 'Level one',
+                        breadcrumbText: 'One',
+                        searchCallback: staticSearch([
+                            {
+                                text: 'Level two',
+                                breadcrumbText: 'Two',
+                                searchCallback: staticSearch(['Leaf'])
+                            }
+                        ])
+                    }
+                ]),
+                selectCallback
             });
             switcher.open();
 
@@ -758,34 +733,35 @@ describe('quick switcher', () => {
             const selectCallback = vi.fn();
             document.body.innerHTML = '';
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{
-                    text: 'Colors',
-                    breadcrumbText: 'Colors',
-                    customProperty: 'kept',
-                    searchCallback: staticSearch(['Red']),
-                }]),
-                selectCallback,
+                searchCallback: staticSearch([
+                    {
+                        text: 'Colors',
+                        breadcrumbText: 'Colors',
+                        customProperty: 'kept',
+                        searchCallback: staticSearch(['Red'])
+                    }
+                ]),
+                selectCallback
             });
             switcher.open();
 
             press('Enter');
             press('Enter');
 
-            expect(selectCallback.mock.calls[0][0].parent.customProperty)
-                .toBe('kept');
+            expect(selectCallback.mock.calls[0][0].parent.customProperty).toBe('kept');
         });
     });
 
     describe('tracking', () => {
         it('ranks previously selected results first', () => {
             const results = [
-                {text: 'Apple', trackerId: 'apple'},
-                {text: 'Banana', trackerId: 'banana'},
+                { text: 'Apple', trackerId: 'apple' },
+                { text: 'Banana', trackerId: 'banana' }
             ];
             const switcher = createSwitcher({
                 searchCallback: staticSearch(results),
                 selectCallback: () => {},
-                trackChildrenAs: 'fruit',
+                trackChildrenAs: 'fruit'
             });
 
             switcher.open();
@@ -799,15 +775,15 @@ describe('quick switcher', () => {
 
         it('does not track when tracking is prevented', () => {
             const results = [
-                {text: 'Apple', trackerId: 'apple'},
-                {text: 'Banana', trackerId: 'banana'},
+                { text: 'Apple', trackerId: 'apple' },
+                { text: 'Banana', trackerId: 'banana' }
             ];
             const switcher = createSwitcher({
                 searchCallback: staticSearch(results),
                 selectCallback: (selectedResult) => {
                     selectedResult.preventTracking();
                 },
-                trackChildrenAs: 'fruit',
+                trackChildrenAs: 'fruit'
             });
 
             switcher.open();
@@ -821,8 +797,8 @@ describe('quick switcher', () => {
 
         it('leaves results untracked without trackChildrenAs', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch([{text: 'Apple', trackerId: 'apple'}]),
-                selectCallback: () => {},
+                searchCallback: staticSearch([{ text: 'Apple', trackerId: 'apple' }]),
+                selectCallback: () => {}
             });
 
             switcher.open();
@@ -834,7 +810,7 @@ describe('quick switcher', () => {
 
     describe('destroy', () => {
         it('removes its element from the document', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.destroy();
 
             expect(document.body.querySelector('.lstr-qswitcher')).toBeNull();
@@ -842,18 +818,18 @@ describe('quick switcher', () => {
 
         it('detaches its document-level hotkey listener', () => {
             const searchCallback = vi.fn(staticSearch([]));
-            const switcher = createSwitcher({searchCallback});
+            const switcher = createSwitcher({ searchCallback });
             switcher.destroy();
 
             searchCallback.mockClear();
-            press('k', {ctrlKey: true});
+            press('k', { ctrlKey: true });
 
             expect(searchCallback).not.toHaveBeenCalled();
         });
 
         it('detaches its document-level navigation listener', () => {
             const switcher = createSwitcher({
-                searchCallback: staticSearch(['One', 'Two']),
+                searchCallback: staticSearch(['One', 'Two'])
             });
             switcher.open();
             switcher.destroy();
@@ -862,23 +838,22 @@ describe('quick switcher', () => {
         });
 
         it('releases the page scroll lock', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.open();
             switcher.destroy();
 
-            expect(document.body.classList.contains('lstr-qswitcher-noscroll'))
-                .toBe(false);
+            expect(document.body.classList.contains('lstr-qswitcher-noscroll')).toBe(false);
         });
 
         it('is safe to call twice', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.destroy();
 
             expect(() => switcher.destroy()).not.toThrow();
         });
 
         it('ignores open() after destruction', () => {
-            const switcher = createSwitcher({searchCallback: staticSearch([])});
+            const switcher = createSwitcher({ searchCallback: staticSearch([]) });
             switcher.destroy();
 
             switcher.open();
@@ -887,9 +862,9 @@ describe('quick switcher', () => {
         });
 
         it('leaves a sibling instance working', () => {
-            const first = createSwitcher({searchCallback: staticSearch([])});
+            const first = createSwitcher({ searchCallback: staticSearch([]) });
             const secondSearch = vi.fn(staticSearch(['Still here']));
-            const second = createSwitcher({searchCallback: secondSearch});
+            const second = createSwitcher({ searchCallback: secondSearch });
 
             first.destroy();
             second.open();
