@@ -1,5 +1,8 @@
 # Quick Switcher
 
+[![CI](https://github.com/nowtwo-llc/nowtwo-quick-switcher/actions/workflows/ci.yml/badge.svg)](https://github.com/nowtwo-llc/nowtwo-quick-switcher/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 A keyboard-driven command palette for the web — the <kbd>Cmd</kbd>+<kbd>K</kbd>
 pattern from Slack, VS Code, and Spotlight, as a small library you can point at
 your own data.

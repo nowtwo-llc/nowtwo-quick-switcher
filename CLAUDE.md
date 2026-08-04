@@ -9,13 +9,13 @@ Quick Switcher is a dependency-free, front-end command palette for the web
 drill-down searches with breadcrumbs and ranks results by the user's own
 selection history, persisted in `localStorage`.
 
-Published as `@nowtwo-llc/quick-switcher` to **npmjs.com** (canonical, what the
-README points at) and mirrored to **GitHub Packages** for internal use.
+Published as `@nowtwo-llc/quick-switcher` to **npmjs.com** only. A GitHub Packages
+mirror was published previously and has been removed; do not reintroduce it.
 Maintained by NowTwo LLC; originally created by Matt Light
 ([lightster](https://github.com/lightster)).
 
-The scope must stay `@nowtwo-llc`: GitHub Packages requires the npm scope to
-match the repository owner, and the owner is `nowtwo-llc`. The npm org
+The scope must stay `@nowtwo-llc`: it matches the repository owner and is the
+name already published. The npm org
 `nowtwollc` also exists but is unused — publishing under it would force two
 different package names for the same library, since `package.json` has only one
 `name` field.
@@ -146,8 +146,7 @@ a `--provenance` flag.
 Two things that will break the publish if changed carelessly:
 
 - `publishConfig` must contain only `access`. Adding a `registry` there
-  out-ranks `setup-node`'s `registry-url` *and* a `--registry` flag, which
-  would send the GitHub Packages job back to npm.
+  out-ranks `setup-node`'s `registry-url` *and* a `--registry` flag.
 - The `environment: npm-publish` name must match the Environment field on the
   trusted publisher at npmjs.com. GitHub puts it in the OIDC claim and npm
   rejects the publish if they disagree.
